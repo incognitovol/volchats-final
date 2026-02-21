@@ -71,6 +71,11 @@ app.use((req, res, next) => {
   return res.sendFile(path.join(__dirname, "maintenance.html"));
 });
 
+// Protect admin.html before static middleware
+app.get("/admin.html", adminGuard, (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
+
 // static after maintenance gate
 app.use(express.static(path.join(__dirname, ".")));
 
