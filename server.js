@@ -257,20 +257,34 @@ try {
 }
 
 async function sendVerificationEmail(email, code) {
+   // If no transporter, always dev mode
   if (!transporter) {
     console.log("\n[VolChats] EMAIL VERIFICATION CODE (DEV MODE):");
     console.log("Email:", email);
     console.log("Code :", code);
     console.log("------------------------------------------------\n");
-    return;
+    return true;
   }
 
+try {
   await transporter.sendMail({
     from: SMTP_FROM,
     to: email,
     subject: "Your VolChats verification code",
     text: `Your VolChats verification code is: ${code}\n\nThis code expires in 10 minutes.`,
   });
+  return true;
+} catch (err) {
+   // IMPORTANT: never crash server because SMTP is down / blocked
+   console.log("\n[VolChats] SMTP SEND FAILED - falling back to DEV MODE");
+   console.log("Error:", err?.message || err);
+   console.log("code :", code);
+   console.log("------------------------------------------------\n");
+
+   // disable transporter for the rest of runtime so it stops retrying
+   transporter = null;
+   return false;
+  }
 }
 
 /* ---------------------------
@@ -346,9 +360,9 @@ app.post("/api/auth/request-code", async (req, res) => {
     "INSERT INTO email_codes (email, code_hash, created_at, expires_at, used) VALUES (?,?,?,?,0)"
   ).run(email, codeHash, createdAt, expiresAt);
 
-  await sendVerificationEmail(email, code);
+  const sent = await sendVerificationEmail(email, code);
 
-  res.json({ ok: true });
+  res.json({ ok: true, sent });
 });
 
 // Verify code
