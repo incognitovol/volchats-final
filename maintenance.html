@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>VolChats — Maintenance</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap">
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#111826;
+      --text:#e6edf6;
+      --muted:#9fb0c3;
+      --line:#223047;
+      --accent:#f47c20;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 50% 0%, rgba(244,124,32,0.18), transparent 55%),
+                  linear-gradient(180deg, #070a0f 0%, var(--bg) 40%, #070a0f 100%);
+      color: var(--text);
+    }
+    .card{
+      width:min(720px, 100%);
+      border:1px solid rgba(34,48,71,0.9);
+      background: linear-gradient(180deg, rgba(17,24,38,0.92), rgba(15,22,35,0.92));
+      border-radius:18px;
+      padding:22px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.35);
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .logo{
+      font-family:"Permanent Marker", system-ui;
+      font-size:34px;
+      letter-spacing:0.5px;
+      color: #fff;
+    }
+    .pill{
+      font-size:12px;
+      color: var(--muted);
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:6px 10px;
+      background: rgba(17,24,38,0.55);
+    }
+    h1{
+      margin:10px 0 6px 0;
+      font-size:22px;
+      font-weight:850;
+      letter-spacing:0.2px;
+    }
+    p{
+      margin:0;
+      color: var(--muted);
+      line-height:1.55;
+      font-size:14px;
+    }
+    .hint{
+      margin-top:14px;
+      border:1px dashed rgba(34,48,71,0.85);
+      border-radius:14px;
+      padding:12px;
+      color: var(--muted);
+      background: rgba(0,0,0,0.18);
+      font-size:13px;
+    }
+    .accent{
+      color:#ffd7b8;
+      font-weight:800;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="logo">VolChats</div>
+      <div class="pill">UTK Only</div>
+      <div class="pill">Maintenance</div>
+    </div>
+
+    <h1>We’re down for maintenance right now.</h1>
+    <p id="msg">We’ll be back soon. Thanks for your patience.</p>
+
+    <div class="hint">
+      If you’re the admin, you can still open <span class="accent">/admin.html</span>.
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const m = params.get("msg");
+    if(m) document.getElementById("msg").textContent = m;
+  </script>
+</body>
+</html>

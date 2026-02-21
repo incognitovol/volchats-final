@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VolChats | UTK Random Chat</title>
+  <link rel="stylesheet" href="style.css" />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  />
+
+  <style>
+    /* Small add-on UI for profile dropdown (won’t mess your existing CSS) */
+    .topbar {
+      position: relative;
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .profile-wrap {
+      position: relative;
+      display: none; /* shown only when logged in */
+    }
+    .profile-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.18);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      backdrop-filter: blur(8px);
+    }
+    .profile-btn i { opacity: 0.9; }
+    .profile-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      min-width: 220px;
+      background: rgba(10,10,12,0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      display: none;
+      z-index: 50;
+      backdrop-filter: blur(14px);
+    }
+    .profile-menu.show { display: block; }
+    .pm-head {
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+    .pm-username {
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.1;
+    }
+    .pm-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.85;
+      color: #d6d6d6;
+      word-break: break-all;
+    }
+    .pm-item {
+      width: 100%;
+      text-align: left;
+      padding: 11px 12px;
+      background: transparent;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 650;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pm-item:hover {
+      background: rgba(255,255,255,0.06);
+    }
+    .pm-item.danger { color: #ff6b6b; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">VolChats</div>
+
+    <div class="topbar-right">
+      <div class="online-badge">
+        <span id="onlineCount">0</span> users online
+      </div>
+
+      <!-- Profile dropdown (shown when logged in) -->
+      <div class="profile-wrap" id="profileWrap">
+        <button class="profile-btn" id="profileBtn" type="button">
+          <i class="fa-solid fa-user"></i>
+          <span id="profileBtnName">Profile</span>
+          <i class="fa-solid fa-chevron-down" style="font-size:12px;"></i>
+        </button>
+
+        <div class="profile-menu" id="profileMenu">
+          <div class="pm-head">
+            <div class="pm-username" id="pmUsername">Username</div>
+            <div class="pm-sub" id="pmEmail">email@utk.edu</div>
+          </div>
+
+          <button class="pm-item danger" id="pmLogout" type="button">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="home-wrapper">
+    <div class="home-card">
+      <h1>Connect with a nearby Volunteer!</h1>
+      <p class="subtitle">
+        VolChats is a random chat platform just for the University of Tennessee.
+        Pick video or text, get matched with another student.
+      </p>
+
+      <div class="btn-row">
+        <button id="videoChatBtn" class="primary-btn">Start Video Chat</button>
+        <button id="textChatBtn" class="primary-btn alt">Start Text Chat</button>
+      </div>
+
+      <p class="tiny-text">
+        * UTK student email verification required.
+      </p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Built by a Volunteer, for Volunteers 🧡 Not affiliated with the University of Tennessee.
+    </p>
+
+    <div class="socials">
+      <a
+        href="https://www.instagram.com/volchats/"
+        target="_blank"
+        class="social-btn"
+        aria-label="Instagram"
+      >
+        <i class="fab fa-instagram"></i>
+      </a>
+      <a
+        href="https://www.tiktok.com/@your_tiktok_here"
+        target="_blank"
+        class="social-btn"
+        aria-label="TikTok"
+      >
+        <i class="fab fa-tiktok"></i>
+      </a>
+    </div>
+  </footer>
+
+  <!-- AUTH MODAL -->
+  <div id="authModal" class="vc-modal-overlay" aria-hidden="true">
+    <div class="vc-modal" role="dialog" aria-modal="true" aria-label="VolChats Login">
+      <div class="vc-modal-top">
+        <div class="vc-modal-brand">
+          <div class="vc-modal-title">VolChats</div>
+          <div class="vc-modal-pill">UTK Verified</div>
+        </div>
+        <button id="authCloseBtn" class="vc-modal-close" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="authBanner" class="vc-modal-banner" style="display:none;"></div>
+
+      <div class="vc-modal-tabs">
+        <button id="tabLogin" class="vc-tab active">Login</button>
+        <button id="tabSignup" class="vc-tab">Create Account</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="panelLogin" class="vc-panel active">
+        <label class="vc-label">Email or Username</label>
+        <input id="loginField" class="vc-input" placeholder="name@utk.edu or username" />
+
+        <label class="vc-label">Password</label>
+        <input id="loginPass" class="vc-input" type="password" placeholder="Your password" />
+
+        <button id="loginBtn" class="vc-btn vc-btn-primary">Login</button>
+
+        <div id="loginMsg" class="vc-msg" style="display:none;"></div>
+
+        <div class="vc-small">
+          New here? <a href="#" id="goSignup" class="vc-link">Create an account</a>
+        </div>
+      </div>
+
+      <!-- SIGNUP (3 steps) -->
+      <div id="panelSignup" class="vc-panel">
+        <!-- Step 1 -->
+        <div id="step1" class="vc-step active">
+          <div class="vc-step-header">
+            <div class="vc-step-title">Verify your UTK email</div>
+            <div class="vc-step-sub">Use your @utk.edu email to join.</div>
+          </div>
+
+          <label class="vc-label">University of Tennessee Email</label>
+          <input id="suEmail" class="vc-input" placeholder="name@utk.edu" />
+
+          <button id="sendCodeBtn" class="vc-btn vc-btn-primary">Send Verification Code</button>
+
+          <div id="signupMsg1" class="vc-msg" style="display:none;"></div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="step2" class="vc-step">
+          <div class="vc-step-header">
+            <div class="vc-step-title">Enter the code</div>
+            <div class="vc-step-sub">We sent a 6-digit code to your UTK email.</div>
+          </div>
+
+          <label class="vc-label">Verification Code</label>
+          <input id="suCode" class="vc-input" placeholder="6-digit code" />
+
+          <div class="vc-row">
+            <button id="backToEmailBtn" class="vc-btn vc-btn-ghost">Back</button>
+            <button id="verifyCodeBtn" class="vc-btn vc-btn-primary">Verify</button>
+          </div>
+
+          <div id="signupMsg2" class="vc-msg" style="display:none;"></div>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="step3" class="vc-step">
+          <div class="vc-step-header">
+            <div class="vc-step-title">Finish your profile</div>
+            <div class="vc-step-sub">Quick setup then you’re in.</div>
+          </div>
+
+          <div class="vc-grid">
+            <div>
+              <label class="vc-label">Username</label>
+              <input id="suUsername" class="vc-input" placeholder="3-20 chars, letters/numbers/._" />
+            </div>
+            <div>
+              <label class="vc-label">Gender</label>
+              <select id="suGender" class="vc-input">
+                <option value="">Select…</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="vc-grid">
+            <div>
+              <label class="vc-label">Class Year</label>
+              <select id="suYear" class="vc-input">
+                <option value="">Select…</option>
+                <option value="freshman">Freshman</option>
+                <option value="sophomore">Sophomore</option>
+                <option value="junior">Junior</option>
+                <option value="senior">Senior</option>
+              </select>
+            </div>
+            <div>
+              <label class="vc-label">Password</label>
+              <input id="suPass" class="vc-input" type="password" placeholder="At least 8 characters" />
+            </div>
+          </div>
+
+          <button id="createBtn" class="vc-btn vc-btn-primary">Create Account</button>
+
+          <div id="signupMsg3" class="vc-msg" style="display:none;"></div>
+
+          <div class="vc-small">
+            Already have an account? <a href="#" id="goLogin" class="vc-link">Login</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

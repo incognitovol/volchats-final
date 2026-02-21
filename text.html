@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VolChats | Text Chat</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap">
+  <style>
+    .tc-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px 0 12px;
+      flex-wrap: wrap;
+    }
+    .tc-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.15);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: white;
+      font-weight: 700;
+      font-size: 13px;
+      backdrop-filter: blur(10px);
+    }
+    .tc-gender {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      color: white;
+    }
+    .tc-male { background: #3b82f6; }
+    .tc-female { background: #ec4899; }
+    .tc-year {
+      background: rgba(255,122,0,0.22);
+      border: 1px solid rgba(255,122,0,0.40);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+  </style>
+</head>
+
+<body class="text-page">
+  <header class="topbar">
+    <div class="logo" id="textLogo">VolChats</div>
+    <div class="online-badge">
+      <span id="onlineCount">0</span> users online
+    </div>
+  </header>
+
+  <main class="text-chat-wrapper">
+    <div class="text-chat-box">
+      <div class="chat-header-text">Text Chat</div>
+
+      <!-- badges -->
+      <div class="tc-badges" id="tcBadges" style="display:none;">
+        <div class="tc-pill" id="tcYou">You</div>
+        <div class="tc-pill" id="tcThem">Volunteer</div>
+      </div>
+
+      <div class="chat-log" id="chatLog">
+        <div class="chat-msg system" id="statusMsg">Looking for nearby Volunteer…</div>
+      </div>
+
+      <div class="chat-actions">
+        <input type="text" id="chatInput" placeholder="Send a message..." autocomplete="off" />
+        <button id="sendBtn" class="primary-btn small">Send</button>
+        <button id="skipBtn" class="danger-btn smallish">Skip</button>
+        <button id="reportBtn" class="secondary-btn smallish">Report</button>
+        <button id="stopBtn" class="secondary-btn smallish">Stop</button>
+        <a href="index.html" class="ghost-btn smallish">Back home</a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
+
+    const onlineCountEl = document.getElementById("onlineCount");
+    const chatLog = document.getElementById("chatLog");
+    const chatInput = document.getElementById("chatInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const skipBtn = document.getElementById("skipBtn");
+    const reportBtn = document.getElementById("reportBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const statusMsg = document.getElementById("statusMsg");
+    const textLogo = document.getElementById("textLogo");
+
+    const tcBadges = document.getElementById("tcBadges");
+    const tcYou = document.getElementById("tcYou");
+    const tcThem = document.getElementById("tcThem");
+
+    let socket = null;
+
+    textLogo.addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
+
+    function appendMessage(text, who = "system") {
+      const div = document.createElement("div");
+      div.classList.add("chat-msg");
+      if (who === "system") div.classList.add("system");
+      if (who === "you") div.classList.add("you");
+
+      if (who === "system") {
+        div.textContent = text;
+      } else {
+        const label = who === "you" ? "You" : "Volunteer";
+        div.innerHTML = `<span class="chat-tag">${label}:</span> ${text}`;
+      }
+
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function pillHtml(label, p) {
+      if (!p || !p.username) return label;
+
+      const g = (p.gender || "").toLowerCase();
+      const gClass = g === "male" ? "tc-male" : "tc-female";
+      const gSymbol = g === "male" ? "♂" : "♀";
+      const year = p.classYear || "";
+
+      return `
+        <span>${label === "You" ? "You" : p.username}</span>
+        <span class="tc-gender ${gClass}">${gSymbol}</span>
+        <span class="tc-year">${year}</span>
+      `;
+    }
+
+    function showBadges(selfProfile, partnerProfile) {
+      if (!tcBadges) return;
+      tcBadges.style.display = "flex";
+      tcYou.innerHTML = pillHtml("You", selfProfile);
+      tcThem.innerHTML = pillHtml("Volunteer", partnerProfile);
+    }
+
+    function hideBadges() {
+      if (!tcBadges) return;
+      tcBadges.style.display = "none";
+      tcYou.textContent = "You";
+      tcThem.textContent = "Volunteer";
+    }
+
+    function setSearchingUI() {
+      hideBadges();
+      if (statusMsg) statusMsg.textContent = "Looking for nearby Volunteer…";
+    }
+
+    function setConnectedUI() {
+      if (statusMsg) statusMsg.textContent = "You're now chatting with a Volunteer. Say hi!";
+    }
+
+    function connectWS() {
+      socket = new WebSocket(WS_URL);
+
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ type: "join", mode: "text" }));
+      };
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "user-count") {
+          onlineCountEl.textContent = data.count;
+          return;
+        }
+
+        if (data.type === "report-success") {
+          appendMessage("You reported this user. Finding another…", "system");
+          setSearchingUI();
+          return;
+        }
+
+        if (data.type === "you-were-reported") {
+          appendMessage("You were reported. Finding a new Volunteer…", "system");
+          setSearchingUI();
+          return;
+        }
+
+        if (data.type === "force-reset") {
+          if (data.reason === "reported") {
+            appendMessage("You were reported. Finding a new Volunteer…", "system");
+          } else if (data.reason === "reporter") {
+            appendMessage("You reported this user. Finding another…", "system");
+          } else {
+            appendMessage("Resetting connection. Finding another…", "system");
+          }
+          setSearchingUI();
+          return;
+        }
+
+        if (data.type === "matched") {
+          setConnectedUI();
+          // ✅ show icons/year in text mode too
+          if (data.self || data.partner) showBadges(data.self, data.partner);
+          return;
+        }
+
+        if (data.type === "partner-left") {
+          appendMessage("Volunteer left. Looking for another…", "system");
+          setSearchingUI();
+          return;
+        }
+
+        if (data.type === "chat") {
+          appendMessage(data.message, "stranger");
+          return;
+        }
+      };
+
+      socket.onclose = () => {
+        setTimeout(connectWS, 1500);
+      };
+    }
+
+    sendBtn.addEventListener("click", () => {
+      const val = chatInput.value.trim();
+      if (!val) return;
+      appendMessage(val, "you");
+      socket.send(JSON.stringify({ type: "chat", message: val }));
+      chatInput.value = "";
+    });
+
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
+
+    skipBtn.addEventListener("click", () => {
+      socket.send(JSON.stringify({ type: "skip" }));
+      setSearchingUI();
+    });
+
+    reportBtn.addEventListener("click", () => {
+      appendMessage("You reported this user. Finding another…", "system");
+      socket.send(JSON.stringify({ type: "report" }));
+      setSearchingUI();
+    });
+
+    stopBtn.addEventListener("click", () => {
+      socket.send(JSON.stringify({ type: "leave" }));
+      setSearchingUI();
+    });
+
+    setSearchingUI();
+    connectWS();
+  </script>
+</body>
+</html>

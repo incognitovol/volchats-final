@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VolChats | Video Chat</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap">
+
+  <style>
+    /* ===== Profile badge under labels ===== */
+    .badge-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .gender-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      color: #fff;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    }
+
+    .male { background: #3b82f6; }
+    .female { background: #ec4899; }
+
+    .year-pill {
+      background: #ff7a00;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.20);
+      text-transform: capitalize;
+    }
+
+    /* ===== Gamified match / skip toast ===== */
+    .match-toast {
+      position: absolute;
+      inset: 16px 16px auto 16px;
+      z-index: 6;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .match-toast.show { display: flex; }
+
+    .match-toast-card {
+      width: min(520px, 92%);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(12, 16, 24, 0.78);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.55);
+      padding: 14px 14px;
+      overflow: hidden;
+      position: relative;
+      transform: translateY(-10px) scale(0.98);
+      opacity: 0;
+      animation: toastIn 220ms ease-out forwards;
+    }
+
+    .match-toast-card::before{
+      content:"";
+      position:absolute;
+      left:-30%;
+      top:-60%;
+      width: 160%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,122,0,0.35), transparent 55%),
+                  radial-gradient(circle at 70% 60%, rgba(59,130,246,0.25), transparent 60%);
+      opacity: 0.9;
+      pointer-events:none;
+    }
+
+    .toast-row{
+      position: relative;
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .toast-icon{
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 20px;
+      font-weight: 900;
+      color:#0b0f14;
+      background: linear-gradient(135deg, #ff7a00, #ffd3a6);
+      box-shadow: 0 10px 28px rgba(255,122,0,0.28);
+      flex: 0 0 auto;
+    }
+
+    .toast-text{
+      position: relative;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width: 0;
+    }
+
+    .toast-title{
+      font-weight: 900;
+      letter-spacing: 0.2px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.92);
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .toast-sub{
+      font-weight: 750;
+      font-size: 14px;
+      color: rgba(255,255,255,0.88);
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .toast-sub b{
+      color: #ffd3a6;
+      font-weight: 950;
+    }
+
+    .toast-hint{
+      margin-top: 2px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.62);
+      font-weight: 650;
+    }
+
+    @keyframes toastIn {
+      to { transform: translateY(0px) scale(1); opacity: 1; }
+    }
+
+    @keyframes toastOut {
+      to { transform: translateY(-10px) scale(0.98); opacity: 0; }
+    }
+  </style>
+</head>
+
+<body class="video-page">
+  <header class="topbar">
+    <div class="logo" id="videoLogo">VolChats</div>
+    <div class="online-badge">
+      <span id="onlineCount">0</span> users online
+    </div>
+  </header>
+
+  <main class="video-screen">
+    <div class="video-row">
+      <div class="video-box" id="selfBox">
+        <video id="selfVideo" autoplay playsinline muted></video>
+        <div class="video-label" id="selfLabel">You</div>
+      </div>
+
+      <div class="video-box" id="remoteBox" style="position:relative;">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="video-label" id="remoteLabel">Volunteer</div>
+        <div class="video-overlay" id="remoteStatus">Looking for nearby Volunteer…</div>
+
+        <!-- Gamified toast -->
+        <div class="match-toast" id="matchToast">
+          <div class="match-toast-card" id="matchToastCard">
+            <div class="toast-row">
+              <div class="toast-icon" id="toastIcon">⚡</div>
+              <div class="toast-text">
+                <div class="toast-title" id="toastTitle">Matched</div>
+                <div class="toast-sub" id="toastSub">You’re matched with <b>someone</b>.</div>
+                <div class="toast-hint" id="toastHint">Don’t be weird. Be cool.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-strip">
+      <div class="chat-log" id="chatLog">
+        <div class="chat-msg system" id="statusMsg">Looking for nearby Volunteer…</div>
+      </div>
+
+      <div class="chat-actions">
+        <input type="text" id="chatInput" placeholder="Send a message..." autocomplete="off" />
+        <button id="sendBtn" class="primary-btn small">Send</button>
+        <button id="skipBtn" class="danger-btn smallish">Skip</button>
+        <button id="reportBtn" class="secondary-btn smallish">Report</button>
+        <button id="stopBtn" class="secondary-btn smallish">Stop</button>
+        <a href="index.html" class="ghost-btn smallish">Back home</a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
+
+    const onlineCountEl = document.getElementById("onlineCount");
+    const videoLogo = document.getElementById("videoLogo");
+
+    const selfVideo = document.getElementById("selfVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+    const remoteStatus = document.getElementById("remoteStatus");
+
+    const selfLabel = document.getElementById("selfLabel");
+    const remoteLabel = document.getElementById("remoteLabel");
+
+    const chatLog = document.getElementById("chatLog");
+    const chatInput = document.getElementById("chatInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const skipBtn = document.getElementById("skipBtn");
+    const reportBtn = document.getElementById("reportBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    // toast
+    const matchToast = document.getElementById("matchToast");
+    const matchToastCard = document.getElementById("matchToastCard");
+    const toastIcon = document.getElementById("toastIcon");
+    const toastTitle = document.getElementById("toastTitle");
+    const toastSub = document.getElementById("toastSub");
+    const toastHint = document.getElementById("toastHint");
+    let toastTimer = null;
+
+    let socket = null;
+    let pc = null;
+    let localStream = null;
+
+    // ignore partner-left spam for a moment after forced resets
+    let ignorePartnerLeftUntil = 0;
+
+    // queue state (for UI)
+    let lastQueue = null; // {position, waiting, activeRooms, maxRooms, mode}
+
+    const ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }];
+
+    videoLogo.addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
+
+    function showToast({ title, subHtml, hint, icon = "⚡", ms = 1800 }) {
+      clearTimeout(toastTimer);
+
+      toastIcon.textContent = icon;
+      toastTitle.textContent = title || "Matched";
+      toastSub.innerHTML = subHtml || `You’re matched with <b>someone</b>.`;
+      toastHint.textContent = hint || "Don’t be weird. Be cool.";
+
+      matchToast.classList.add("show");
+      matchToastCard.style.animation = "none";
+      void matchToastCard.offsetHeight;
+      matchToastCard.style.animation = "";
+
+      toastTimer = setTimeout(() => {
+        matchToastCard.style.animation = "toastOut 220ms ease-in forwards";
+        setTimeout(() => {
+          matchToast.classList.remove("show");
+          matchToastCard.style.animation = "";
+        }, 240);
+      }, ms);
+    }
+
+    function appendMessage(text, who = "system") {
+      const div = document.createElement("div");
+      div.classList.add("chat-msg");
+      if (who === "system") div.classList.add("system");
+      if (who === "you") div.classList.add("you");
+
+      if (who === "system") {
+        div.textContent = text;
+      } else {
+        const label = who === "you" ? "You" : "Volunteer";
+        div.innerHTML = `<span class="chat-tag">${label}:</span> ${text}`;
+      }
+
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function renderBadge(labelEl, profile, isSelf = false) {
+      if (!profile) {
+        labelEl.textContent = isSelf ? "You" : "Volunteer";
+        return;
+      }
+
+      const genderClass = profile.gender === "male" ? "male" : "female";
+      const genderSymbol = profile.gender === "male" ? "♂" : "♀";
+
+      labelEl.innerHTML = `
+        <div class="badge-row">
+          <span>${isSelf ? "You" : profile.username}</span>
+          <span class="gender-icon ${genderClass}">${genderSymbol}</span>
+          <span class="year-pill">${profile.classYear}</span>
+        </div>
+      `;
+    }
+
+    function setSearchingUI() {
+      lastQueue = null;
+      remoteStatus.style.display = "flex";
+      remoteStatus.textContent = "Looking for nearby Volunteer…";
+      remoteVideo.srcObject = null;
+      remoteLabel.textContent = "Volunteer";
+      const statusMsg = document.getElementById("statusMsg");
+      if (statusMsg) statusMsg.textContent = "Looking for nearby Volunteer…";
+    }
+
+    function setQueueUI(q) {
+      // q: {position, waiting, activeRooms, maxRooms, mode}
+      lastQueue = q;
+
+      remoteStatus.style.display = "flex";
+      remoteStatus.textContent = `In queue… Position ${q.position} of ${q.waiting}`;
+
+      const statusMsg = document.getElementById("statusMsg");
+      if (statusMsg) {
+        const roomsLine = (Number.isFinite(q.activeRooms) && Number.isFinite(q.maxRooms))
+          ? ` (${q.activeRooms}/${q.maxRooms} video rooms active)`
+          : "";
+        statusMsg.textContent = `Queue: position ${q.position} of ${q.waiting}${roomsLine}. Keep this tab open.`;
+      }
+    }
+
+    function setConnectedUI() {
+      lastQueue = null;
+      remoteStatus.style.display = "none";
+      const statusMsg = document.getElementById("statusMsg");
+      if (statusMsg) statusMsg.textContent = "You're now chatting with a Volunteer. Say hi!";
+    }
+
+    async function ensureLocalStream() {
+      if (localStream) return;
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      selfVideo.srcObject = localStream;
+    }
+
+    function hardResetPeer() {
+      if (pc) {
+        try { pc.close(); } catch {}
+        pc = null;
+      }
+      remoteVideo.srcObject = null;
+    }
+
+    async function ensurePeer() {
+      if (pc) return;
+
+      pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate && socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "ice", candidate: e.candidate }));
+        }
+      };
+
+      pc.ontrack = (e) => {
+        remoteVideo.srcObject = e.streams[0];
+        setConnectedUI();
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        const s = pc ? pc.iceConnectionState : "";
+        if (s === "failed" || s === "disconnected" || s === "closed") {
+          hardResetPeer();
+          // if server already told us we're queued, keep queue UI; otherwise searching
+          if (lastQueue) setQueueUI(lastQueue);
+          else setSearchingUI();
+        }
+      };
+
+      if (localStream) {
+        localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+      }
+    }
+
+    async function makeOffer() {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.send(JSON.stringify({ type: "offer", offer }));
+    }
+
+    function captureEvidenceScreenshot() {
+      try {
+        if (!remoteVideo || remoteVideo.readyState < 2) return "";
+        const canvas = document.createElement("canvas");
+        const w = remoteVideo.videoWidth || 640;
+        const h = remoteVideo.videoHeight || 360;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(remoteVideo, 0, 0, w, h);
+        return canvas.toDataURL("image/jpeg", 0.75);
+      } catch {
+        return "";
+      }
+    }
+
+    function connectWS() {
+      socket = new WebSocket(WS_URL);
+
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ type: "join", mode: "video" }));
+      };
+
+      socket.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "user-count") {
+          onlineCountEl.textContent = data.count;
+          return;
+        }
+
+        // ✅ maintenance (server closes ws during maintenance)
+        if (data.type === "maintenance") {
+          // send them to maintenance page
+          window.location.href = "/maintenance.html";
+          return;
+        }
+
+        // ✅ queue updates (new)
+        if (data.type === "queue" && data.mode === "video") {
+          setQueueUI({
+            mode: data.mode,
+            position: Number(data.position || 1),
+            waiting: Number(data.waiting || 1),
+            activeRooms: Number(data.activeRooms || 0),
+            maxRooms: Number(data.maxRooms || 0),
+          });
+          return;
+        }
+
+        if (data.type === "force-reset") {
+          ignorePartnerLeftUntil = Date.now() + 2000;
+
+          if (data.reason === "reported") {
+            appendMessage("You were reported. Finding a new Volunteer…", "system");
+            showToast({
+              title: "Reported",
+              subHtml: `Someone reported you. <b>Switching your match…</b>`,
+              hint: "Keep it clean. Stay respectful.",
+              icon: "🚨",
+              ms: 1800
+            });
+          } else if (data.reason === "reporter") {
+            appendMessage("You reported this user. Finding another…", "system");
+            showToast({
+              title: "Report sent",
+              subHtml: `Report submitted. <b>Finding someone else…</b>`,
+              hint: "Thanks for keeping VolChats clean.",
+              icon: "🧾",
+              ms: 1600
+            });
+          } else if (data.reason === "banned") {
+            appendMessage("You are banned. Logging you out…", "system");
+          }
+
+          // If we were queued, keep queue UI; otherwise searching
+          hardResetPeer();
+          if (lastQueue) setQueueUI(lastQueue);
+          else setSearchingUI();
+          return;
+        }
+
+        if (data.type === "partner-left") {
+          if (Date.now() < ignorePartnerLeftUntil) {
+            hardResetPeer();
+            if (lastQueue) setQueueUI(lastQueue);
+            else setSearchingUI();
+            return;
+          }
+          appendMessage("Volunteer left. Looking for another…", "system");
+          hardResetPeer();
+          if (lastQueue) setQueueUI(lastQueue);
+          else setSearchingUI();
+          return;
+        }
+
+        if (data.type === "matched") {
+          ignorePartnerLeftUntil = 0;
+          lastQueue = null; // ✅ once matched, you're not in queue
+
+          if (data.self) renderBadge(selfLabel, data.self, true);
+          if (data.partner) renderBadge(remoteLabel, data.partner);
+
+          const p = data.partner || null;
+          const displayName = p?.username ? p.username : "a Volunteer";
+          const year = p?.classYear ? ` • ${p.classYear}` : "";
+          const gender = p?.gender === "male" ? "♂" : (p?.gender === "female" ? "♀" : "");
+          showToast({
+            title: "Matched!",
+            subHtml: `You’re matched with <b>${displayName}</b>${year} ${gender}`,
+            hint: "Don’t be weird. Say hi.",
+            icon: "⚡",
+            ms: 1800
+          });
+
+          await ensureLocalStream();
+          await ensurePeer();
+          if (data.initiator) await makeOffer();
+          return;
+        }
+
+        if (data.type === "offer") {
+          await ensureLocalStream();
+          await ensurePeer();
+          await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.send(JSON.stringify({ type: "answer", answer }));
+          return;
+        }
+
+        if (data.type === "answer") {
+          if (pc) await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+          return;
+        }
+
+        if (data.type === "ice") {
+          try { if (pc) await pc.addIceCandidate(data.candidate); } catch {}
+          return;
+        }
+
+        if (data.type === "chat") {
+          appendMessage(data.message, "stranger");
+          return;
+        }
+      };
+
+      socket.onclose = () => {
+        setTimeout(connectWS, 1500);
+      };
+    }
+
+    // Buttons
+    sendBtn.addEventListener("click", () => {
+      const val = chatInput.value.trim();
+      if (!val) return;
+      appendMessage(val, "you");
+      socket.send(JSON.stringify({ type: "chat", message: val }));
+      chatInput.value = "";
+    });
+
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
+
+    skipBtn.addEventListener("click", () => {
+      showToast({
+        title: "Skipping…",
+        subHtml: `Finding a <b>new Volunteer</b>…`,
+        hint: "Next match loading.",
+        icon: "⏭️",
+        ms: 1400
+      });
+
+      // skipping should also clear queue UI (server will re-queue you if full)
+      lastQueue = null;
+
+      socket.send(JSON.stringify({ type: "skip" }));
+      setSearchingUI();
+      hardResetPeer();
+    });
+
+    reportBtn.addEventListener("click", () => {
+      appendMessage("You reported this user. Finding another…", "system");
+      ignorePartnerLeftUntil = Date.now() + 2000;
+
+      lastQueue = null;
+
+      const screenshotDataUrl = captureEvidenceScreenshot();
+      socket.send(JSON.stringify({ type: "report", screenshotDataUrl }));
+
+      setSearchingUI();
+      hardResetPeer();
+    });
+
+    stopBtn.addEventListener("click", () => {
+      lastQueue = null;
+      socket.send(JSON.stringify({ type: "leave" }));
+      setSearchingUI();
+      hardResetPeer();
+    });
+
+    setSearchingUI();
+    ensureLocalStream().then(connectWS).catch(() => connectWS());
+  </script>
+</body>
+</html>

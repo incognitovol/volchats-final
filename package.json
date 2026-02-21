@@ -1,0 +1,21 @@
+{
+  "name": "volchats",
+  "version": "1.0.0",
+  "description": "VolChats prototype",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18 <23"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.1",
+    "ws": "^8.18.0"
+  }
+}

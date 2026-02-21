@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>VolChats Admin</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#111826;
+      --panel2:#0f1623;
+      --text:#e6edf6;
+      --muted:#9fb0c3;
+      --line:#223047;
+      --accent:#f47c20;
+      --danger:#ff4d4d;
+      --ok:#2dd4bf;
+      --btn:#1b2a41;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #070a0f 0%, var(--bg) 40%, #070a0f 100%);
+      color: var(--text);
+    }
+    header{
+      position:sticky; top:0;
+      background: rgba(11,15,20,0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      z-index:10;
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .top{
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex; gap:10px; align-items:center;
+      font-weight:800;
+      letter-spacing:0.3px;
+      flex-wrap:wrap;
+    }
+    .pill{
+      font-size:12px;
+      color: var(--muted);
+      padding:6px 10px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background: rgba(17,24,38,0.6);
+    }
+    .controls{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    input, select{
+      background: rgba(17,24,38,0.75);
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius:10px;
+      outline:none;
+      min-width: 180px;
+    }
+    button{
+      background: var(--btn);
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:650;
+    }
+    button:hover{filter:brightness(1.1)}
+    .danger{background: rgba(255,77,77,0.12); border-color: rgba(255,77,77,0.35)}
+    .accent{background: rgba(244,124,32,0.16); border-color: rgba(244,124,32,0.4)}
+    .ok{background: rgba(45,212,191,0.12); border-color: rgba(45,212,191,0.35)}
+
+    .tabs{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-left: 6px;
+    }
+    .tab{
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(17,24,38,0.55);
+      color: var(--muted);
+      cursor:pointer;
+      font-weight:800;
+      font-size:12px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      user-select:none;
+    }
+    .tab.active{
+      background: rgba(244,124,32,0.16);
+      border-color: rgba(244,124,32,0.4);
+      color: #ffd7b8;
+    }
+
+    main .wrap{padding-top:18px}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+    .card{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(17,24,38,0.85), rgba(15,22,35,0.85));
+      border-radius:16px;
+      overflow:hidden;
+    }
+    .cardHead{
+      padding:14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(34,48,71,0.7);
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .meta{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.4;
+    }
+    .titleRow{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width: 320px;
+    }
+    .rid{
+      font-weight:800;
+      color: var(--text);
+      font-size:14px;
+      letter-spacing:0.2px;
+    }
+    .status{
+      font-size:12px;
+      padding:5px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      color: var(--muted);
+      background: rgba(11,15,20,0.4);
+      width: fit-content;
+      text-transform: capitalize;
+    }
+    .status.open{border-color: rgba(244,124,32,0.45); color:#ffd7b8}
+    .status.cleared{border-color: rgba(45,212,191,0.35); color:#c9fff5}
+    .status.banned{border-color: rgba(255,77,77,0.35); color:#ffd0d0}
+
+    .cardBody{
+      display:grid;
+      grid-template-columns: 260px 1fr;
+      gap:14px;
+      padding:14px;
+    }
+    @media (max-width: 840px){
+      .cardBody{grid-template-columns: 1fr}
+    }
+    .shot{
+      border:1px solid rgba(34,48,71,0.7);
+      border-radius:14px;
+      background: rgba(0,0,0,0.25);
+      overflow:hidden;
+      position:relative;
+      min-height: 180px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: var(--muted);
+      font-size:13px;
+    }
+    .shot img{width:100%; height:auto; display:block}
+    .chat{
+      border:1px solid rgba(34,48,71,0.7);
+      border-radius:14px;
+      padding:12px;
+      background: rgba(0,0,0,0.18);
+      max-height: 220px;
+      overflow:auto;
+      font-size:13px;
+      line-height:1.45;
+    }
+    .chat .line{margin:0 0 8px 0; color: var(--text)}
+    .chat .ts{color: var(--muted); font-size:12px}
+    .chat .who{color:#ffd7b8; font-weight:750}
+    .footerActions{
+      padding: 0 14px 14px 14px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .leftActions, .rightActions{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    }
+    .tiny{min-width: 110px}
+    .note{color: var(--muted); font-size:12px}
+    .empty{
+      border:1px dashed rgba(34,48,71,0.8);
+      border-radius:16px;
+      padding:18px;
+      color: var(--muted);
+      text-align:center;
+      background: rgba(17,24,38,0.35);
+    }
+    .kv b{color:#ffd7b8}
+
+    /* Users list */
+    .userRow{
+      padding: 14px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px 14px;
+      align-items:center;
+      justify-content:space-between;
+      border-bottom:1px solid rgba(34,48,71,0.55);
+    }
+    .userLeft{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width: 280px;
+    }
+    .userName{
+      font-weight: 950;
+      letter-spacing: 0.2px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .chip{
+      font-size: 12px;
+      font-weight: 850;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(34,48,71,0.75);
+      background: rgba(0,0,0,0.18);
+      color: var(--muted);
+      text-transform: capitalize;
+    }
+    .chip.orange{
+      border-color: rgba(244,124,32,0.45);
+      color:#ffd7b8;
+      background: rgba(244,124,32,0.12);
+    }
+    .chip.blue{
+      border-color: rgba(59,130,246,0.45);
+      color:#cfe3ff;
+      background: rgba(59,130,246,0.12);
+    }
+    .chip.pink{
+      border-color: rgba(236,72,153,0.45);
+      color:#ffd0e8;
+      background: rgba(236,72,153,0.12);
+    }
+    .userMeta{
+      color: var(--muted);
+      font-size: 13px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="top">
+        <div class="brand">
+          <div style="font-size:18px;">VolChats Admin</div>
+          <div class="pill" id="tokenMode">token: required</div>
+          <div class="pill" id="lastRefresh">refresh: —</div>
+
+          <div class="tabs">
+            <div class="tab active" id="tabReports">Reports</div>
+            <div class="tab" id="tabUsers">Users</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <input id="search" placeholder="Search email / username / IP / reportId" />
+          <select id="statusFilter">
+            <option value="all">All statuses</option>
+            <option value="open">Open</option>
+            <option value="cleared">Cleared</option>
+            <option value="banned">Banned</option>
+          </select>
+          <button class="accent" id="refreshBtn">Refresh</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div id="reportsView">
+        <div id="list" class="grid"></div>
+        <div id="empty" class="empty" style="display:none;">No reports yet. Create one by reporting someone in video chat.</div>
+      </div>
+
+      <div id="usersView" style="display:none;">
+        <div id="usersList" class="grid"></div>
+        <div id="usersEmpty" class="empty" style="display:none;">No users found.</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token = params.get("token") || "";
+    const tokenModeEl = document.getElementById("tokenMode");
+    const lastRefreshEl = document.getElementById("lastRefresh");
+
+    tokenModeEl.textContent = token ? "token: provided" : "token: missing";
+
+    // tabs
+    const tabReports = document.getElementById("tabReports");
+    const tabUsers = document.getElementById("tabUsers");
+    const reportsView = document.getElementById("reportsView");
+    const usersView = document.getElementById("usersView");
+
+    const listEl = document.getElementById("list");
+    const emptyEl = document.getElementById("empty");
+    const usersListEl = document.getElementById("usersList");
+    const usersEmptyEl = document.getElementById("usersEmpty");
+
+    const searchEl = document.getElementById("search");
+    const statusFilterEl = document.getElementById("statusFilter");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    let activeTab = "reports"; // reports | users
+
+    function setTab(next){
+      activeTab = next;
+
+      tabReports.classList.toggle("active", next === "reports");
+      tabUsers.classList.toggle("active", next === "users");
+
+      reportsView.style.display = next === "reports" ? "block" : "none";
+      usersView.style.display = next === "users" ? "block" : "none";
+
+      // status filter only for reports
+      statusFilterEl.style.display = next === "reports" ? "inline-block" : "none";
+
+      // tweak placeholder
+      searchEl.placeholder = next === "reports"
+        ? "Search email / username / IP / reportId"
+        : "Search username / email / class year";
+
+      refresh();
+    }
+
+    tabReports.addEventListener("click", () => setTab("reports"));
+    tabUsers.addEventListener("click", () => setTab("users"));
+
+    function fmtTime(iso){
+      try{
+        const d = new Date(iso);
+        return d.toLocaleString();
+      }catch{
+        return iso;
+      }
+    }
+
+    function esc(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    async function apiGet(path){
+      const url = token ? `${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}` : path;
+      const res = await fetch(url);
+      if(!res.ok){
+        const t = await res.text();
+        throw new Error(t || ("HTTP " + res.status));
+      }
+      return res.json();
+    }
+
+    async function apiPost(path, body){
+      const url = token ? `${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}` : path;
+      const res = await fetch(url, {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(body || {})
+      });
+      if(!res.ok){
+        const t = await res.text();
+        throw new Error(t || ("HTTP " + res.status));
+      }
+      return res.json();
+    }
+
+    function renderReports(reports){
+      const q = (searchEl.value || "").trim().toLowerCase();
+      const sf = statusFilterEl.value;
+
+      const filtered = reports.filter(r => {
+        const hay = [
+          r.reportId,
+          r?.reported?.ip,
+          r?.reporter?.ip,
+          r?.reported?.email,
+          r?.reported?.username,
+          r?.reporter?.email,
+          r?.reporter?.username
+        ].join(" ").toLowerCase();
+        const matchQ = !q || hay.includes(q);
+        const matchS = (sf === "all") || (r.status === sf);
+        return matchQ && matchS;
+      });
+
+      listEl.innerHTML = "";
+      emptyEl.style.display = filtered.length ? "none" : "block";
+
+      for(const r of filtered){
+        const lastMsgs = (r?.evidence?.lastMessages || []);
+        const screenshot = r?.evidence?.screenshotDataUrl || "";
+
+        const reportedEmail = r?.reported?.email || "—";
+        const reportedUser = r?.reported?.username || "—";
+        const reportedUserId = r?.reported?.userId ?? "—";
+
+        const reporterEmail = r?.reporter?.email || "—";
+        const reporterUser = r?.reporter?.username || "—";
+        const reporterUserId = r?.reporter?.userId ?? "—";
+
+        const totalIp = r?.reported?.totalReportsOnThisIp ?? "—";
+        const totalEmail = r?.reported?.totalReportsOnThisEmail ?? "—";
+        const totalUid = r?.reported?.totalReportsOnThisUserId ?? "—";
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+          <div class="cardHead">
+            <div class="titleRow">
+              <div class="rid">${esc(r.reportId)}</div>
+              <div class="status ${esc(r.status)}">${esc(r.status)}</div>
+
+              <div class="meta kv">
+                <div><b>Time:</b> ${esc(fmtTime(r.createdAt))}</div>
+                <div><b>Reported:</b> ${esc(reportedUser)} (${esc(reportedEmail)})</div>
+                <div><b>Reported userId:</b> ${esc(reportedUserId)}</div>
+                <div><b>Reported IP:</b> ${esc(r?.reported?.ip || "—")}</div>
+                <div><b>Reports:</b> IP ${esc(totalIp)} | Email ${esc(totalEmail)} | userId ${esc(totalUid)}</div>
+              </div>
+            </div>
+
+            <div class="meta kv">
+              <div><b>Reporter:</b> ${esc(reporterUser)} (${esc(reporterEmail)})</div>
+              <div><b>Reporter userId:</b> ${esc(reporterUserId)}</div>
+              <div><b>Reporter IP:</b> ${esc(r?.reporter?.ip || "—")}</div>
+              <div><b>Socket:</b> ${esc(r?.reported?.socketId || "—")}</div>
+            </div>
+          </div>
+
+          <div class="cardBody">
+            <div class="shot">
+              ${
+                screenshot
+                  ? `<img src="${esc(screenshot)}" alt="screenshot" />`
+                  : `<div>No screenshot captured</div>`
+              }
+            </div>
+
+            <div class="chat">
+              ${
+                lastMsgs.length
+                  ? lastMsgs.map(m => `
+                      <div class="line">
+                        <div class="ts">${esc(fmtTime(m.ts))}</div>
+                        <div><span class="who">${esc(String(m.fromId).slice(0,10))}</span>: ${esc(m.text)}</div>
+                      </div>
+                    `).join("")
+                  : `<div class="note">No chat messages saved for this report.</div>`
+              }
+            </div>
+          </div>
+
+          <div class="footerActions">
+            <div class="leftActions">
+              <button class="ok tiny" data-action="clear" data-id="${esc(r.reportId)}">Clear</button>
+              <button class="danger tiny" data-action="ban" data-id="${esc(r.reportId)}">Ban</button>
+            </div>
+
+            <div class="rightActions">
+              <span class="note">Bans are linked to account (userId + email) and IP as backup.</span>
+            </div>
+          </div>
+        `;
+
+        listEl.appendChild(card);
+      }
+
+      listEl.querySelectorAll("button[data-action]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const action = btn.getAttribute("data-action");
+          const id = btn.getAttribute("data-id");
+          try{
+            if(action === "clear"){
+              await apiPost(`/admin/reports/${encodeURIComponent(id)}/clear`, {});
+              await refresh();
+              return;
+            }
+
+            if(action === "ban"){
+              const rep = await apiGet(`/admin/reports/${encodeURIComponent(id)}`);
+
+              const ip = rep?.reported?.ip || "";
+              const email = rep?.reported?.email || "";
+              const userId = rep?.reported?.userId ?? null;
+
+              const durationMinStr = prompt("Ban duration in minutes? (60=1h, 1440=1 day)", "1440");
+              if(durationMinStr === null) return;
+              const durationMinutes = Math.max(1, Number(durationMinStr || 0));
+
+              const reason = prompt("Ban reason (shown to user)?", "Inappropriate behavior");
+              if(reason === null) return;
+
+              await apiPost(`/admin/ban`, { ip, email, userId, durationMinutes, reason, reportId: id });
+              await refresh();
+              return;
+            }
+          }catch(e){
+            alert("Error: " + (e.message || e));
+          }
+        });
+      });
+    }
+
+    function renderUsers(users){
+      const q = (searchEl.value || "").trim().toLowerCase();
+
+      const filtered = users.filter(u => {
+        const hay = [
+          u.username,
+          u.email,
+          u.gender,
+          u.class_year,
+          u.id
+        ].join(" ").toLowerCase();
+        return !q || hay.includes(q);
+      });
+
+      usersListEl.innerHTML = "";
+      usersEmptyEl.style.display = filtered.length ? "none" : "block";
+
+      for(const u of filtered){
+        const genderChip = u.gender === "male" ? "chip blue" : "chip pink";
+        const yearChip = "chip orange";
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+          <div class="userRow">
+            <div class="userLeft">
+              <div class="userName">
+                <span>${esc(u.username)}</span>
+                <span class="${genderChip}">${esc(u.gender)}</span>
+                <span class="${yearChip}">${esc(u.class_year)}</span>
+                <span class="chip">id ${esc(u.id)}</span>
+              </div>
+              <div class="userMeta">
+                <div><b style="color:#ffd7b8">Email:</b> ${esc(u.email)}</div>
+                <div><b style="color:#ffd7b8">Created:</b> ${esc(fmtTime(u.created_at))}</div>
+                <div><b style="color:#ffd7b8">Last login:</b> ${esc(u.last_login_at ? fmtTime(u.last_login_at) : "—")}</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        usersListEl.appendChild(card);
+      }
+    }
+
+    async function refresh(){
+      const ts = new Date().toLocaleTimeString();
+      lastRefreshEl.textContent = "refresh: " + ts;
+
+      if (activeTab === "reports") {
+        const data = await apiGet("/admin/reports?limit=200");
+        renderReports(data.reports || []);
+        return;
+      }
+
+      if (activeTab === "users") {
+        const data = await apiGet("/admin/users?limit=1000");
+        renderUsers(data.users || []);
+        return;
+      }
+    }
+
+    refreshBtn.addEventListener("click", refresh);
+    searchEl.addEventListener("input", () => refresh());
+    statusFilterEl.addEventListener("change", () => refresh());
+
+    setTab("reports");
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>
