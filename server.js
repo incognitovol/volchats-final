@@ -281,7 +281,7 @@ try {
    console.log("------------------------------------------------\n");
 
    //Do Not crash the server
-   reutrn;
+   return;
  }
 }
 
