@@ -257,6 +257,7 @@ try {
 }
 
 async function sendVerificationEmail(email, code) {
+   // If SMTP not configured, just print the code
   if (!transporter) {
     console.log("\n[VolChats] EMAIL VERIFICATION CODE (DEV MODE):");
     console.log("Email:", email);
@@ -275,8 +276,12 @@ try {
 } catch (err) {
    console.log("\n[VolChats] SMTP SEND FAILED - falling back to DEV MODE");
    console.log("Error:", err?.message || err);
-   console.log("code :", code);
+   console.log("Email:", email);
+   console.log("Code :", code);
    console.log("------------------------------------------------\n");
+
+   //Do Not crash the server
+   reutrn;
  }
 }
 
