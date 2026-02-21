@@ -358,10 +358,13 @@ app.post("/api/auth/request-code", async (req, res) => {
     "INSERT INTO email_codes (email, code_hash, created_at, expires_at, used) VALUES (?,?,?,?,0)"
   ).run(email, codeHash, createdAt, expiresAt);
 
-  const sent = await sendVerificationEmail(email, code);
+// respond immediately so the button never hangs
+res.json({ ok: true });
 
-  res.json({ ok: true, sent });
-});
+// send email in background (don't block request)
+sendVerificationEmail(email, code)
+   .then((sent) => console.log("[VolChats] verification email sent>", sent))
+   .catch((err) => console.log("[VolChats] verification email error:", err?.message || err));
 
 // Verify code
 app.post("/api/auth/verify-code", (req, res) => {
