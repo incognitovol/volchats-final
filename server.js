@@ -257,7 +257,6 @@ try {
 }
 
 async function sendVerificationEmail(email, code) {
-  // Always log in dev if SMTP/API isn't set
   const fallbackLog = () => {
     console.log("\n[VolChats] EMAIL VERIFICATION CODE (DEV MODE):");
     console.log("Email:", email);
@@ -265,7 +264,7 @@ async function sendVerificationEmail(email, code) {
     console.log("------------------------------------------------\n");
   };
 
-  // Prefer Brevo API on Railway (no SMTP ports needed)
+  // Prefer Brevo API if key exists
   if (process.env.BREVO_API_KEY) {
     try {
       const r = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -276,7 +275,10 @@ async function sendVerificationEmail(email, code) {
           "api-key": process.env.BREVO_API_KEY,
         },
         body: JSON.stringify({
-          sender: { name: "VolChats", email: (SMTP_FROM.match(/<([^>]+)>/)?.[1] || "no-reply@volchats.com") },
+          sender: {
+            name: "VolChats",
+            email: (SMTP_FROM.match(/<([^>]+)>/)?.[1] || "no-reply@volchats.com")
+          },
           to: [{ email }],
           subject: "Your VolChats verification code",
           textContent: `Your VolChats verification code is: ${code}\n\nThis code expires in 10 minutes.`,
@@ -288,6 +290,7 @@ async function sendVerificationEmail(email, code) {
         console.log("[VolChats] Brevo API failed:", r.status, txt);
         fallbackLog();
       }
+
       return;
     } catch (err) {
       console.log("[VolChats] Brevo API error:", err?.message || err);
@@ -296,7 +299,7 @@ async function sendVerificationEmail(email, code) {
     }
   }
 
-  // If no Brevo API key, try SMTP if configured
+  // Fallback to SMTP if configured
   if (!transporter) {
     fallbackLog();
     return;
@@ -309,32 +312,11 @@ async function sendVerificationEmail(email, code) {
       subject: "Your VolChats verification code",
       text: `Your VolChats verification code is: ${code}\n\nThis code expires in 10 minutes.`,
     });
-    return;
   } catch (err) {
-    console.log("\n[VolChats] SMTP SEND FAILED - falling back to DEV MODE");
+    console.log("[VolChats] SMTP SEND FAILED - falling back to DEV MODE");
     console.log("Error:", err?.message || err);
     fallbackLog();
-    return;
   }
-}
-   
-try {
-  await transporter.sendMail({
-    from: SMTP_FROM,
-    to: email,
-    subject: "Your VolChats verification code",
-    text: `Your VolChats verification code is: ${code}\n\nThis code expires in 10 minutes.`,
-  });
-} catch (err) {
-   console.log("\n[VolChats] SMTP SEND FAILED - falling back to DEV MODE");
-   console.log("Error:", err?.message || err);
-   console.log("Email:", email);
-   console.log("Code :", code);
-   console.log("------------------------------------------------\n");
-
-   //Do Not crash the server
-   return;
- }
 }
 
 /* ---------------------------
