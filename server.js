@@ -257,6 +257,7 @@ try {
 }
 
 async function sendVerificationEmail(email, code) {
+  // Always have a fallback log (so you can still test even if Brevo/API fails)
   const fallbackLog = () => {
     console.log("\n[VolChats] EMAIL VERIFICATION CODE (DEV MODE):");
     console.log("Email:", email);
@@ -264,21 +265,23 @@ async function sendVerificationEmail(email, code) {
     console.log("------------------------------------------------\n");
   };
 
-  // Prefer Brevo API if key exists
+  // 1) Prefer Brevo HTTP API in production (works on Railway, no SMTP ports)
   if (process.env.BREVO_API_KEY) {
     try {
+      // IMPORTANT: "sender.email" must match a verified sender/domain in Brevo
+      // Use your authenticated domain sender like no-reply@volchats.com
+      const fromEmail =
+        (SMTP_FROM.match(/<([^>]+)>/) || [])[1] || "no-reply@volchats.com";
+
       const r = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {
-          "accept": "application/json",
+          accept: "application/json",
           "content-type": "application/json",
           "api-key": process.env.BREVO_API_KEY,
         },
         body: JSON.stringify({
-          sender: {
-            name: "VolChats",
-            email: (SMTP_FROM.match(/<([^>]+)>/)?.[1] || "no-reply@volchats.com")
-          },
+          sender: { name: "VolChats", email: fromEmail },
           to: [{ email }],
           subject: "Your VolChats verification code",
           textContent: `Your VolChats verification code is: ${code}\n\nThis code expires in 10 minutes.`,
@@ -289,20 +292,21 @@ async function sendVerificationEmail(email, code) {
         const txt = await r.text();
         console.log("[VolChats] Brevo API failed:", r.status, txt);
         fallbackLog();
+        return false;
       }
 
-      return;
+      return true;
     } catch (err) {
       console.log("[VolChats] Brevo API error:", err?.message || err);
       fallbackLog();
-      return;
+      return false;
     }
   }
 
-  // Fallback to SMTP if configured
+  // 2) If no API key, try SMTP transporter (may still fail on Railway)
   if (!transporter) {
     fallbackLog();
-    return;
+    return true;
   }
 
   try {
@@ -312,10 +316,12 @@ async function sendVerificationEmail(email, code) {
       subject: "Your VolChats verification code",
       text: `Your VolChats verification code is: ${code}\n\nThis code expires in 10 minutes.`,
     });
+    return true;
   } catch (err) {
-    console.log("[VolChats] SMTP SEND FAILED - falling back to DEV MODE");
+    console.log("\n[VolChats] SMTP SEND FAILED");
     console.log("Error:", err?.message || err);
     fallbackLog();
+    return false;
   }
 }
 
