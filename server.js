@@ -266,6 +266,7 @@ async function sendVerificationEmail(email, code) {
   };
 
   // 1) Prefer Brevo HTTP API in production (works on Railway, no SMTP ports)
+console.log("[VolChats] BREVO_API_KEY present?", !!process.env.BREVO_API_KEY);
   if (process.env.BREVO_API_KEY) {
     try {
       // IMPORTANT: "sender.email" must match a verified sender/domain in Brevo
