@@ -335,7 +335,7 @@ function adminGuard(req, res, next) {
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
 
-if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET) {
+if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_TENANT_ID) {
   passport.use(
     new OIDCStrategy(
       {
