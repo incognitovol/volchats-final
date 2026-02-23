@@ -30,29 +30,23 @@ const loginPass = document.getElementById("loginPass");
 const loginBtn = document.getElementById("loginBtn");
 const loginMsg = document.getElementById("loginMsg");
 
-// Signup elements (3 steps)
-const step1 = document.getElementById("step1");
-const step2 = document.getElementById("step2");
-const step3 = document.getElementById("step3");
+// Signup elements (Microsoft-first, 2 steps)
+const step1 = document.getElementById("step1"); // Microsoft verify
+const step2 = document.getElementById("step2"); // Profile info
 
-const suEmail = document.getElementById("suEmail");
-const sendCodeBtn = document.getElementById("sendCodeBtn");
+const msBtn = document.getElementById("msBtn");
 const signupMsg1 = document.getElementById("signupMsg1");
-
-const suCode = document.getElementById("suCode");
-const backToEmailBtn = document.getElementById("backToEmailBtn");
-const verifyCodeBtn = document.getElementById("verifyCodeBtn");
 const signupMsg2 = document.getElementById("signupMsg2");
 
+const suEmail = document.getElementById("suEmail"); // disabled, filled after OAuth
 const suUsername = document.getElementById("suUsername");
 const suGender = document.getElementById("suGender");
 const suYear = document.getElementById("suYear");
 const suPass = document.getElementById("suPass");
 const createBtn = document.getElementById("createBtn");
-const signupMsg3 = document.getElementById("signupMsg3");
 
 let pendingTarget = null; // "video.html" or "text.html"
-let verifiedOk = false;
+let OAUTH_VERIFIED = false;
 
 function showModal() {
   authModal.classList.add("show");
@@ -89,17 +83,14 @@ function setTab(which) {
   hideMsg(loginMsg);
   hideMsg(signupMsg1);
   hideMsg(signupMsg2);
-  hideMsg(signupMsg3);
 }
 
 function setStep(n) {
-  step1.classList.toggle("active", n === 1);
-  step2.classList.toggle("active", n === 2);
-  step3.classList.toggle("active", n === 3);
+  if (step1) step1.classList.toggle("active", n === 1);
+  if (step2) step2.classList.toggle("active", n === 2);
 
   hideMsg(signupMsg1);
   hideMsg(signupMsg2);
-  hideMsg(signupMsg3);
 }
 
 async function api(path, method, body) {
@@ -190,8 +181,14 @@ async function startChat(target) {
   }
 
   // reset modal state
-  authBanner.style.display = "none";
-  verifiedOk = false;
+  if (authBanner) authBanner.style.display = "none";
+
+  OAUTH_VERIFIED = false;
+  if (suEmail) {
+    suEmail.value = "";
+    suEmail.disabled = true;
+  }
+
   setTab("login");
   setStep(1);
   showModal();
@@ -210,7 +207,7 @@ if (authModal) {
   });
 }
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && authModal.classList.contains("show")) hideModal();
+  if (e.key === "Escape" && authModal?.classList.contains("show")) hideModal();
 });
 
 // Tabs + quick links
@@ -228,7 +225,9 @@ if (goLogin) goLogin.addEventListener("click", (e) => {
   setTab("login");
 });
 
-// LOGIN
+/* ---------------------------
+   LOGIN
+----------------------------*/
 if (loginBtn) {
   loginBtn.addEventListener("click", async () => {
     hideMsg(loginMsg);
@@ -258,98 +257,105 @@ if (loginBtn) {
   });
 }
 
-// SIGNUP STEP 1: send code
-if (sendCodeBtn) {
-  sendCodeBtn.addEventListener("click", async () => {
+/* ---------------------------
+   MICROSOFT OAUTH (signup step 1)
+----------------------------*/
+if (msBtn) {
+  msBtn.addEventListener("click", (e) => {
+    e.preventDefault();
     hideMsg(signupMsg1);
-    sendCodeBtn.disabled = true;
-
-    try {
-      const email = (suEmail?.value || "").trim();
-      await api("/api/auth/request-code", "POST", { email });
-
-      showMsg(signupMsg1, "Code sent. Check your UTK email.", "ok");
-
-      setTimeout(() => {
-        setStep(2);
-        suCode?.focus();
-      }, 400);
-    } catch (e) {
-      showMsg(signupMsg1, e.message || "Could not send code", "err");
-    } finally {
-      sendCodeBtn.disabled = false;
-    }
+    showMsg(signupMsg1, "Redirecting to Microsoft…", null);
+    // server route that starts OAuth
+    window.location.href = "/auth/microsoft";
   });
 }
 
-// SIGNUP STEP 2: back
-if (backToEmailBtn) {
-  backToEmailBtn.addEventListener("click", () => {
-    verifiedOk = false;
+// If we return from Microsoft, server should redirect back to index with ?oauth=1
+(async function handleOauthReturn() {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("oauth") !== "1") return;
+
+    // open modal directly in signup flow
+    pendingTarget = pendingTarget || p.get("next") || null;
+    showModal();
+    setTab("signup");
     setStep(1);
-    suEmail?.focus();
-  });
-}
 
-// SIGNUP STEP 2: verify code
-if (verifyCodeBtn) {
-  verifyCodeBtn.addEventListener("click", async () => {
-    hideMsg(signupMsg2);
-    verifyCodeBtn.disabled = true;
+    hideMsg(signupMsg1);
+    showMsg(signupMsg1, "Finishing Microsoft verification…", null);
 
-    try {
-      const email = (suEmail?.value || "").trim();
-      const code = (suCode?.value || "").trim();
+    const r = await fetch("/api/auth/oauth-status");
+    const j = await r.json().catch(() => null);
 
-      await api("/api/auth/verify-code", "POST", { email, code });
-      verifiedOk = true;
-
-      showMsg(signupMsg2, "Verified. Finish your profile.", "ok");
-
-      setTimeout(() => {
-        setStep(3);
-        suUsername?.focus();
-      }, 350);
-    } catch (e) {
-      verifiedOk = false;
-      showMsg(signupMsg2, e.message || "Verification failed", "err");
-    } finally {
-      verifyCodeBtn.disabled = false;
+    if (!r.ok || !j || !j.ok) {
+      showMsg(
+        signupMsg1,
+        j?.error || "Microsoft verification failed. Please try again.",
+        "err"
+      );
+      return;
     }
-  });
-}
 
-// SIGNUP STEP 3: create account
+    // Verified!
+    OAUTH_VERIFIED = true;
+
+    // Fill email and move to step 2
+    if (suEmail) {
+      suEmail.value = j.email || "";
+      suEmail.disabled = true;
+    }
+
+    showMsg(
+      signupMsg1,
+      "Microsoft verified. Now finish your profile below.",
+      "ok"
+    );
+
+    setTimeout(() => {
+      setStep(2);
+      suUsername?.focus();
+    }, 250);
+
+    // clean the URL so refresh doesn't re-run oauth flow
+    const cleanUrl = window.location.pathname + (p.get("next") ? `?next=${encodeURIComponent(p.get("next"))}` : "");
+    window.history.replaceState({}, "", cleanUrl);
+  } catch {
+    showMsg(signupMsg1, "Microsoft verification failed. Please try again.", "err");
+  }
+})();
+
+/* ---------------------------
+   CREATE ACCOUNT (signup step 2)
+----------------------------*/
 if (createBtn) {
   createBtn.addEventListener("click", async () => {
-    hideMsg(signupMsg3);
+    hideMsg(signupMsg2);
     createBtn.disabled = true;
 
     try {
-      if (!verifiedOk) {
-        showMsg(signupMsg3, "Verify your email code first.", "err");
+      if (!OAUTH_VERIFIED) {
+        showMsg(signupMsg2, "Please verify with UTK Microsoft first.", "err");
+        setStep(1);
         createBtn.disabled = false;
-        setStep(2);
         return;
       }
 
-      await api("/api/auth/register", "POST", {
-        email: (suEmail?.value || "").trim(),
-        code: (suCode?.value || "").trim(),
+      await api("/api/auth/register-oauth", "POST", {
         username: (suUsername?.value || "").trim(),
         gender: suGender?.value || "",
         classYear: suYear?.value || "",
         password: suPass?.value || "",
       });
 
-      showMsg(signupMsg3, "Account created. Sending you in…", "ok");
+      showMsg(signupMsg2, "Account created. Sending you in…", "ok");
 
       setTimeout(() => {
         hideModal();
         window.location.href = pendingTarget || "index.html";
       }, 450);
     } catch (e) {
-      showMsg(signupMsg3, e.message || "Signup failed", "err");
+      showMsg(signupMsg2, e.message || "Signup failed", "err");
     } finally {
       createBtn.disabled = false;
     }
