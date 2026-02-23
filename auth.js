@@ -237,3 +237,10 @@ createBtn.onclick = async () => {
     createBtn.disabled = false;
   }
 };
+
+// Microsoft OAuth (UTK email verification via Microsoft)
+if (msBtn) {
+  msBtn.onclick = () => {
+    window.location.href = "/auth/microsoft";
+  };
+}
