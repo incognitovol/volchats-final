@@ -4,10 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>VolChats | Login</title>
+
   <style>
     :root{
       --bg:#0b0f14; --panel:#111826; --line:#223047; --text:#e6edf6; --muted:#9fb0c3;
-      --accent:#f47c20; --teal:#2dd4bf; --danger:#ff4d4d;
+      --accent:#f47c20; --accent2:#ff9a4a; --danger:#ff4d4d;
+      --mint:#2dd4bf;
     }
     *{box-sizing:border-box}
     body{
@@ -21,12 +23,13 @@
       padding:24px;
     }
     .card{
-      width: min(560px, 100%);
+      width: min(520px, 100%);
       border:1px solid var(--line);
       background: rgba(17,24,38,0.88);
       border-radius: 18px;
       padding: 18px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
     }
     .top{
       display:flex; align-items:center; justify-content:space-between;
@@ -36,7 +39,12 @@
       margin-bottom:12px;
     }
     .brand{font-weight:900; letter-spacing:0.2px; font-size:18px}
-    .pill{font-size:12px; color:var(--muted); border:1px solid var(--line); padding:6px 10px; border-radius:999px}
+    .pill{
+      font-size:12px; color:var(--muted);
+      border:1px solid var(--line);
+      padding:6px 10px; border-radius:999px
+    }
+
     .tabs{display:flex; gap:10px; margin: 10px 0 14px}
     button.tab{
       flex:1;
@@ -47,12 +55,15 @@
       border-radius: 12px;
       cursor:pointer;
       font-weight:800;
-      transition: transform .06s ease, background .15s ease, border-color .15s ease;
     }
-    button.tab:active{transform: scale(0.99)}
-    button.tab.active{border-color: rgba(244,124,32,0.55); background: rgba(244,124,32,0.12)}
+    button.tab.active{
+      border-color: rgba(244,124,32,0.55);
+      background: rgba(244,124,32,0.12)
+    }
+
     .section{display:none}
     .section.active{display:block}
+
     label{display:block; font-size:12px; color:var(--muted); margin: 10px 0 6px}
     input, select{
       width:100%;
@@ -63,9 +74,9 @@
       color: var(--text);
       outline:none;
     }
-    input::placeholder{color: rgba(159,176,195,0.7)}
+
     .row{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
-    @media (max-width:560px){ .row{grid-template-columns: 1fr} }
+    @media (max-width:520px){ .row{grid-template-columns: 1fr} }
 
     .btn{
       width:100%;
@@ -73,21 +84,19 @@
       padding:12px;
       border-radius: 12px;
       border:1px solid rgba(244,124,32,0.55);
-      background: rgba(244,124,32,0.16);
+      background: rgba(244,124,32,0.18);
       color: var(--text);
       font-weight:900;
       cursor:pointer;
-      transition: transform .06s ease, background .15s ease, border-color .15s ease;
+      transition: transform .05s ease, opacity .2s ease, background .2s ease;
     }
-    .btn:hover{background: rgba(244,124,32,0.22)}
-    .btn:active{transform: scale(0.99)}
+    .btn:active{ transform: scale(0.99); }
     .btn:disabled{opacity:0.55; cursor:not-allowed}
 
-    .btn-teal{
+    .btn.microsoft{
       border-color: rgba(45,212,191,0.55);
       background: rgba(45,212,191,0.18);
     }
-    .btn-teal:hover{background: rgba(45,212,191,0.24)}
 
     .msg{
       margin-top:12px;
@@ -99,22 +108,31 @@
       font-size:13px;
       line-height:1.45;
     }
-    .msg.err{border-color: rgba(255,77,77,0.45); color:#ffd0d0}
-    .msg.ok{border-color: rgba(45,212,191,0.35); color:#c9fff5}
+    .msg.err{border-color: rgba(255,77,77,0.55); color:#ffd0d0}
+    .msg.ok{border-color: rgba(45,212,191,0.45); color:#c9fff5}
+
     .small{font-size:12px;color:var(--muted); margin-top:10px}
     .link{color:#ffd7b8; text-decoration:none; font-weight:800}
+
     .divider{
-      margin-top:12px;
-      border-top:1px solid rgba(34,48,71,0.55);
-      padding-top:12px;
+      height:1px; background: rgba(34,48,71,0.65);
+      margin: 12px 0;
+    }
+
+    .step{
+      font-size:12px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.35;
     }
   </style>
 </head>
+
 <body>
   <div class="card">
     <div class="top">
       <div class="brand">VolChats</div>
-      <div class="pill">UTK Verified Login</div>
+      <div class="pill">UTK Verified</div>
     </div>
 
     <div id="banBox" class="msg err" style="display:none;"></div>
@@ -140,27 +158,48 @@
 
     <!-- SIGNUP -->
     <div class="section" id="secSignup">
-      <div class="small">
-        Step 1: Verify your UTK email with Microsoft.<br/>
-        Step 2: Choose your username + profile info.
+
+      <!-- STEP 1: Microsoft verification -->
+      <div id="step1Box">
+        <div class="step">
+          Step 1: Verify your UTK email with Microsoft.<br/>
+          Step 2: Pick your username + profile info.
+        </div>
+
+        <button class="btn microsoft" id="msBtn" type="button" style="margin-top:12px;">
+          Continue with UTK Microsoft
+        </button>
+
+        <div id="signupMsg" class="msg" style="display:none;"></div>
       </div>
 
-      <button class="btn btn-teal" id="msBtn" type="button" style="margin-top:12px;">
-        Continue with UTK Microsoft
-      </button>
+      <!-- STEP 2: profile completion (hidden until OAuth verified) -->
+      <div id="profileBox" style="display:none;">
+        <div class="msg ok" id="verifiedBanner" style="display:block;">
+          Microsoft verified. Finish creating your account below.
+        </div>
 
-      <div id="signupMsg" class="msg" style="display:none;"></div>
-
-      <!-- These fields stay hidden until Microsoft verification succeeds -->
-      <div id="postOauthFields" class="divider" style="display:none;">
         <label>Verified UTK Email</label>
-        <input id="suEmail" placeholder="name@utk.edu" disabled />
+        <input id="suEmail" disabled />
+
+        <div class="divider"></div>
 
         <div class="row">
           <div>
             <label>Username</label>
             <input id="suUsername" placeholder="3-20 chars, letters/numbers/._" />
           </div>
+          <div>
+            <label>Gender</label>
+            <select id="suGender">
+              <option value="">Select…</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
           <div>
             <label>Class Year</label>
             <select id="suYear">
@@ -171,23 +210,20 @@
               <option value="senior">Senior</option>
             </select>
           </div>
+          <div>
+            <label>Password</label>
+            <input id="suPass" type="password" placeholder="At least 8 characters" />
+          </div>
         </div>
 
-        <label>Gender</label>
-        <select id="suGender">
-          <option value="">Select…</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-        </select>
-
-        <label>Password</label>
-        <input id="suPass" type="password" placeholder="At least 8 characters" />
-
-        <button class="btn" id="createBtn" type="button" disabled>Create Account</button>
+        <button class="btn" id="createBtn" type="button">Create Account</button>
 
         <div class="small">Already have an account? <a class="link" href="#" id="goLogin">Login</a></div>
+
+        <div id="signupMsg2" class="msg" style="display:none;"></div>
       </div>
     </div>
+
   </div>
 
   <script src="auth.js"></script>
