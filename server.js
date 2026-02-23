@@ -11,9 +11,43 @@ const bcrypt = require("bcryptjs");
 const Database = require("better-sqlite3");
 const nodemailer = require("nodemailer");
 
+/* ---------------------------
+   ✅ ADDED: Microsoft OAuth deps
+----------------------------*/
+const session = require("express-session");
+const passport = require("passport");
+const { OIDCStrategy } = require("passport-azure-ad");
+
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
+
+/* ---------------------------
+   ✅ ADDED: needed for Microsoft callback (form_post)
+----------------------------*/
+app.use(express.urlencoded({ extended: false }));
+
+/* ---------------------------
+   ✅ ADDED: trust proxy (Railway) + express-session + passport
+   (Does NOT replace your JWT cookie system; only supports OAuth handshake)
+----------------------------*/
+app.set("trust proxy", 1);
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "dev_session_secret_change_me",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    },
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -47,6 +81,17 @@ const MAINTENANCE_MESSAGE = String(process.env.MAINTENANCE_MESSAGE || "").trim()
 // Room caps (NOT users). 20 rooms = 40 users in video. 80 rooms = 160 users in text.
 const MAX_VIDEO_ROOMS = Math.max(1, Number(process.env.MAX_VIDEO_ROOMS || 20));
 const MAX_TEXT_ROOMS = Math.max(1, Number(process.env.MAX_TEXT_ROOMS || 80));
+
+/* ---------------------------
+   ✅ ADDED: Microsoft OAuth ENV
+----------------------------*/
+const BASE_URL = String(process.env.BASE_URL || "").trim() || `http://localhost:${PORT}`;
+const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID || "";
+const MICROSOFT_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET || "";
+const MICROSOFT_TENANT_ID = process.env.MICROSOFT_TENANT_ID || "";
+
+// Pending OAuth cookie (short-lived)
+const OAUTH_PENDING_COOKIE = "volchats_oauth_pending";
 
 /* ---------------------------
    Maintenance gate (admin still works)
@@ -211,6 +256,38 @@ function authRequired(req, res, next) {
 }
 
 /* ---------------------------
+   ✅ ADDED: OAuth pending cookie helpers
+----------------------------*/
+function setOauthPendingCookie(res, payload) {
+  // 15 minute pending window
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+  res.cookie(OAUTH_PENDING_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: IS_PROD,
+    maxAge: 15 * 60 * 1000,
+  });
+}
+
+function clearOauthPendingCookie(res) {
+  res.clearCookie(OAUTH_PENDING_COOKIE, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: IS_PROD,
+  });
+}
+
+function getOauthPending(req) {
+  const t = req.cookies[OAUTH_PENDING_COOKIE];
+  if (!t) return null;
+  try {
+    return jwt.verify(t, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+/* ---------------------------
    Admin guard
 ----------------------------*/
 function isLocalhost(req) {
@@ -229,6 +306,140 @@ function adminGuard(req, res, next) {
   if (!isLocalhost(req)) return res.status(401).json({ error: "Unauthorized (localhost only)" });
   next();
 }
+
+/* ---------------------------
+   ✅ ADDED: Microsoft OAuth Strategy + Routes
+----------------------------*/
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
+
+if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_TENANT_ID) {
+  passport.use(
+    new OIDCStrategy(
+      {
+        identityMetadata: `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/v2.0/.well-known/openid-configuration`,
+        clientID: MICROSOFT_CLIENT_ID,
+        clientSecret: MICROSOFT_CLIENT_SECRET,
+        responseType: "code",
+        responseMode: "form_post",
+        redirectUrl: `${BASE_URL}/auth/microsoft/callback`,
+        allowHttpForRedirectUrl: !IS_PROD,
+        scope: ["openid", "profile", "email"],
+      },
+      (iss, sub, profile, accessToken, refreshToken, done) => {
+        try {
+          const email =
+            profile?._json?.preferred_username ||
+            profile?.upn ||
+            profile?._json?.email ||
+            "";
+
+          const normalized = normalizeEmail(email);
+          if (!isValidUtkEmail(normalized)) {
+            return done(null, false, { message: "Must use a valid @vols.utk.edu email" });
+          }
+
+          return done(null, { email: normalized });
+        } catch (e) {
+          return done(e);
+        }
+      }
+    )
+  );
+
+  // Start OAuth
+  app.get("/auth/microsoft", (req, res, next) => {
+    // During maintenance, you can still allow auth pages
+    return passport.authenticate("azuread-openidconnect")(req, res, next);
+  });
+
+  // Callback (Azure uses POST form_post)
+  app.post(
+    "/auth/microsoft/callback",
+    passport.authenticate("azuread-openidconnect", { failureRedirect: "/auth.html?oauth=fail" }),
+    (req, res) => {
+      try {
+        const email = normalizeEmail(req.user?.email || "");
+        if (!isValidUtkEmail(email)) return res.redirect("/auth.html?oauth=fail");
+
+        // If user already exists, log them in immediately
+        const existing = db.prepare("SELECT id, email, username FROM users WHERE email=?").get(email);
+        if (existing) {
+          setSessionCookie(res, { userId: existing.id, email: existing.email, username: existing.username });
+          clearOauthPendingCookie(res);
+          return res.redirect("/video.html"); // or /text.html, or /auth.html?logged=1
+        }
+
+        // Otherwise, mark them as verified pending signup details
+        setOauthPendingCookie(res, { email, oauthVerified: true });
+
+        // Send them back to your auth page so UI can show "finish signup"
+        return res.redirect("/auth.html?oauth=1");
+      } catch {
+        return res.redirect("/auth.html?oauth=fail");
+      }
+    }
+  );
+} else {
+  console.log("[VolChats] Microsoft OAuth not enabled (missing MICROSOFT_* env vars).");
+}
+
+/* ---------------------------
+   ✅ ADDED: API helpers for frontend
+----------------------------*/
+app.get("/api/auth/oauth-status", (req, res) => {
+  const p = getOauthPending(req);
+  if (!p?.email || !isValidUtkEmail(p.email)) return res.json({ ok: false });
+  return res.json({ ok: true, email: p.email });
+});
+
+// Register via Microsoft OAuth (no email code)
+app.post("/api/auth/register-oauth", (req, res) => {
+  const p = getOauthPending(req);
+  const email = normalizeEmail(p?.email || "");
+
+  if (!p?.oauthVerified || !isValidUtkEmail(email)) {
+    return res.status(401).json({ error: "Microsoft verification required" });
+  }
+
+  const username = normalizeUsername(req.body.username);
+  const gender = String(req.body.gender || "").trim().toLowerCase();
+  const classYear = String(req.body.classYear || "").trim().toLowerCase();
+  const password = String(req.body.password || "");
+
+  if (!isValidUsername(username)) return res.status(400).json({ error: "Username must be 3-20 chars: letters/numbers/._" });
+  if (!(gender === "male" || gender === "female")) return res.status(400).json({ error: "Gender must be male or female" });
+
+  const validYears = new Set(["freshman", "sophomore", "junior", "senior"]);
+  if (!validYears.has(classYear)) return res.status(400).json({ error: "Class year must be freshman/sophomore/junior/senior" });
+
+  if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
+
+  const existingEmail = db.prepare("SELECT id FROM users WHERE email=?").get(email);
+  if (existingEmail) return res.status(400).json({ error: "Email already has an account. Login instead." });
+
+  const existingUser = db.prepare("SELECT id FROM users WHERE username=?").get(username);
+  if (existingUser) return res.status(400).json({ error: "Username already taken." });
+
+  const passwordHash = bcrypt.hashSync(password, 12);
+  const createdAt = nowIso();
+
+  const info = db
+    .prepare(
+      "INSERT INTO users (email, username, gender, class_year, password_hash, created_at) VALUES (?,?,?,?,?,?)"
+    )
+    .run(email, username, gender, classYear, passwordHash, createdAt);
+
+  const userId = info.lastInsertRowid;
+
+  // Log them in
+  setSessionCookie(res, { userId, email, username });
+
+  // Clear pending
+  clearOauthPendingCookie(res);
+
+  return res.json({ ok: true, user: { userId, email, username, gender, classYear } });
+});
 
 /* ---------------------------
    Email sender (SMTP optional)
@@ -283,7 +494,7 @@ async function sendVerificationEmail(email, code) {
     (SMTP_FROM.match(/<([^>]+)>/) || [])[1] ||
     (String(SMTP_FROM || "").includes("@") ? String(SMTP_FROM).trim() : "") ||
     "no-reply@mail.volchats.com";
-   
+
   // ========== 0) Prefer Resend HTTP API ==========
   if (RESEND_API_KEY) {
     try {
@@ -319,7 +530,7 @@ async function sendVerificationEmail(email, code) {
       console.log("[VolChats] Resend API error:", err?.message || err);
     }
   }
-   
+
   // ========== 1) Prefer Brevo HTTP API ==========
   if (process.env.BREVO_API_KEY) {
     console.log(`[VolChats] Trying Brevo HTTP API... traceId=${traceId} fromEmail=${fromEmail}`);
@@ -341,7 +552,6 @@ async function sendVerificationEmail(email, code) {
           to: [{ email }],
           subject: "Your VolChats sign-in code",
           textContent: `Your VolChats sign-in code is: ${code}\n\nThis code expires in 10 minutes.\n\ntraceId: ${traceId}`,
-          // Optional: adds a custom header you can filter by if needed
           headers: { "X-VolChats-Trace": traceId },
         }),
         signal: controller.signal,
@@ -350,7 +560,6 @@ async function sendVerificationEmail(email, code) {
       console.log(`[VolChats] Brevo HTTP status=${r.status} traceId=${traceId}`);
 
       const txt = await r.text();
-      // log body (Brevo returns useful info here)
       console.log(`[VolChats] Brevo HTTP response traceId=${traceId}:`, txt);
 
       if (r.status < 200 || r.status >= 300) {
@@ -1179,4 +1388,8 @@ server.listen(PORT, () => {
   } else {
     console.log("SMTP not set: codes will print in terminal (dev mode)");
   }
+
+  // Microsoft OAuth logging
+  console.log("Microsoft OAuth:", MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_TENANT_ID ? "ENABLED" : "OFF");
+  console.log("BASE_URL:", BASE_URL);
 });
