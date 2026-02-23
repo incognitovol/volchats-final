@@ -1,5 +1,3 @@
-
-
 function qs(id){ return document.getElementById(id); }
 
 const tabLogin = qs("tabLogin");
