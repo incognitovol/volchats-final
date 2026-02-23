@@ -34,6 +34,9 @@ const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASS = process.env.SMTP_PASS || "";
 const SMTP_FROM = process.env.SMTP_FROM || "VolChats <no-reply@volchats.local>";
 
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const RESEND_FROM = process.env.RESEND_FROM || SMTP_FROM;
+
 const IS_PROD = process.env.NODE_ENV === "production";
 
 // Maintenance + Capacity caps (queue)
@@ -280,7 +283,43 @@ async function sendVerificationEmail(email, code) {
     (SMTP_FROM.match(/<([^>]+)>/) || [])[1] ||
     (String(SMTP_FROM || "").includes("@") ? String(SMTP_FROM).trim() : "") ||
     "no-reply@volchats.com";
+   
+  // ========== 0) Prefer Resend HTTP API ==========
+  if (RESEND_API_KEY) {
+    try {
+      const fromEmail =
+        (String(RESEND_FROM).match(/<([^>]+)>/) || [])[1] ||
+        String(RESEND_FROM) ||
+        "no-reply@volchats.com";
 
+      console.log("[VolChats] Trying Resend API...");
+
+      const rr = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [email],
+          subject: "Your VolChats sign-in code",
+          text: `Your VolChats sign-in code is: ${code}\n\nThis code expires in 10 minutes.`,
+        }),
+      });
+
+      if (!rr.ok) {
+        const txt = await rr.text();
+        console.log("[VolChats] Resend API failed:", rr.status, txt);
+      } else {
+        console.log("[VolChats] Resend API SUCCESS");
+        return true;
+      }
+    } catch (err) {
+      console.log("[VolChats] Resend API error:", err?.message || err);
+    }
+  }
+   
   // ========== 1) Prefer Brevo HTTP API ==========
   if (process.env.BREVO_API_KEY) {
     console.log(`[VolChats] Trying Brevo HTTP API... traceId=${traceId} fromEmail=${fromEmail}`);
