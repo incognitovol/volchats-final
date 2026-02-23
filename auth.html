@@ -4,30 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>VolChats | Login</title>
-
   <style>
     :root{
       --bg:#0b0f14; --panel:#111826; --line:#223047; --text:#e6edf6; --muted:#9fb0c3;
       --accent:#f47c20; --danger:#ff4d4d;
     }
-
     *{box-sizing:border-box}
-
     body{
-      margin:0;
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:
-        radial-gradient(1200px 800px at 20% 10%, rgba(244,124,32,0.18), transparent 45%),
-        radial-gradient(1200px 800px at 80% 20%, rgba(45,212,191,0.12), transparent 45%),
-        linear-gradient(180deg, #070a0f, var(--bg));
+      margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(244,124,32,0.18), transparent 45%),
+                  radial-gradient(1200px 800px at 80% 20%, rgba(45,212,191,0.12), transparent 45%),
+                  linear-gradient(180deg, #070a0f, var(--bg));
       color: var(--text);
       min-height: 100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display:flex; align-items:center; justify-content:center;
       padding:24px;
     }
-
     .card{
       width: min(520px, 100%);
       border:1px solid var(--line);
@@ -35,32 +27,17 @@
       border-radius: 18px;
       padding: 18px;
     }
-
     .top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; flex-wrap:wrap;
       border-bottom:1px solid rgba(34,48,71,0.7);
       padding-bottom:12px;
       margin-bottom:12px;
     }
+    .brand{font-weight:900; letter-spacing:0.2px; font-size:18px}
+    .pill{font-size:12px; color:var(--muted); border:1px solid var(--line); padding:6px 10px; border-radius:999px}
 
-    .brand{font-weight:900; font-size:18px}
-    .pill{
-      font-size:12px;
-      color:var(--muted);
-      border:1px solid var(--line);
-      padding:6px 10px;
-      border-radius:999px
-    }
-
-    .tabs{
-      display:flex;
-      gap:10px;
-      margin: 10px 0 14px
-    }
-
+    .tabs{display:flex; gap:10px; margin: 10px 0 14px}
     button.tab{
       flex:1;
       background: rgba(0,0,0,0.16);
@@ -71,22 +48,11 @@
       cursor:pointer;
       font-weight:800;
     }
-
-    button.tab.active{
-      border-color: rgba(244,124,32,0.45);
-      background: rgba(244,124,32,0.12)
-    }
-
+    button.tab.active{border-color: rgba(244,124,32,0.45); background: rgba(244,124,32,0.12)}
     .section{display:none}
     .section.active{display:block}
 
-    label{
-      display:block;
-      font-size:12px;
-      color:var(--muted);
-      margin: 10px 0 6px
-    }
-
+    label{display:block; font-size:12px; color:var(--muted); margin: 10px 0 6px}
     input, select{
       width:100%;
       padding:12px;
@@ -97,15 +63,8 @@
       outline:none;
     }
 
-    .row{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px
-    }
-
-    @media (max-width:520px){
-      .row{grid-template-columns: 1fr}
-    }
+    .row{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
+    @media (max-width:520px){ .row{grid-template-columns: 1fr} }
 
     .btn{
       width:100%;
@@ -118,15 +77,12 @@
       font-weight:900;
       cursor:pointer;
     }
+    .btn:disabled{opacity:0.6; cursor:not-allowed}
 
-    .btn:disabled{
-      opacity:0.6;
-      cursor:not-allowed
-    }
-
-    .btn.ms{
-      border-color:rgba(45,212,191,0.45);
-      background:rgba(45,212,191,0.25);
+    .btn-ms{
+      border-color: rgba(45,212,191,0.45) !important;
+      background: rgba(45,212,191,0.20) !important;
+      margin-top:10px !important;
     }
 
     .msg{
@@ -137,25 +93,14 @@
       color: var(--muted);
       background: rgba(0,0,0,0.18);
       font-size:13px;
+      line-height:1.45;
     }
-
     .msg.err{border-color: rgba(255,77,77,0.45); color:#ffd0d0}
     .msg.ok{border-color: rgba(45,212,191,0.35); color:#c9fff5}
-
-    .small{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:10px
-    }
-
-    .link{
-      color:#ffd7b8;
-      text-decoration:none;
-      font-weight:800
-    }
+    .small{font-size:12px;color:var(--muted); margin-top:10px}
+    .link{color:#ffd7b8; text-decoration:none; font-weight:800}
   </style>
 </head>
-
 <body>
   <div class="card">
     <div class="top">
@@ -166,43 +111,38 @@
     <div id="banBox" class="msg err" style="display:none;"></div>
 
     <div class="tabs">
-      <button class="tab active" id="tabLogin">Login</button>
-      <button class="tab" id="tabSignup">Create Account</button>
+      <button class="tab active" id="tabLogin" type="button">Login</button>
+      <button class="tab" id="tabSignup" type="button">Create Account</button>
     </div>
 
     <!-- LOGIN -->
     <div class="section active" id="secLogin">
       <label>Email or Username</label>
-      <input id="loginField" placeholder="name@vols.utk.edu or username" />
+      <input id="loginField" placeholder="name@utk.edu or username" />
 
       <label>Password</label>
       <input id="loginPass" type="password" placeholder="Your password" />
 
-      <button class="btn" id="loginBtn">Login</button>
-
-      <div class="small">
-        New here? Click <a class="link" href="#" id="goSignup">Create Account</a>
-      </div>
+      <button class="btn" id="loginBtn" type="button">Login</button>
+      <div class="small">New here? Click <a class="link" href="#" id="goSignup">Create Account</a></div>
 
       <div id="loginMsg" class="msg" style="display:none;"></div>
     </div>
 
     <!-- SIGNUP -->
     <div class="section" id="secSignup">
-
       <label>UTK Email</label>
-      <input id="suEmail" placeholder="name@vols.utk.edu" />
+      <input id="suEmail" placeholder="name@utk.edu" />
 
-      <!-- MICROSOFT LOGIN BUTTON -->
-      <button class="btn ms" id="msBtn" type="button">
+      <button class="btn btn-ms" id="msBtn" type="button">
         Continue with UTK Microsoft
       </button>
 
-      <div class="small">
+      <div class="small" style="margin-top:8px">
         If email codes go to spam/quarantine, use Microsoft login instead.
       </div>
 
-      <button class="btn" id="sendCodeBtn">Send Verification Code</button>
+      <button class="btn" id="sendCodeBtn" type="button">Send Verification Code</button>
 
       <div class="row">
         <div>
@@ -239,12 +179,9 @@
       <label>Password</label>
       <input id="suPass" type="password" placeholder="At least 8 characters" />
 
-      <button class="btn" id="createBtn">Create Account</button>
+      <button class="btn" id="createBtn" type="button">Create Account</button>
 
-      <div class="small">
-        Already have an account?
-        <a class="link" href="#" id="goLogin">Login</a>
-      </div>
+      <div class="small">Already have an account? <a class="link" href="#" id="goLogin">Login</a></div>
 
       <div id="signupMsg" class="msg" style="display:none;"></div>
     </div>
