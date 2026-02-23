@@ -637,3 +637,22 @@ body.text-page .chat-log {
   flex: 1;
   padding: 0.6rem 0.8rem 0.2rem;
 }
+
+/* Microsoft OAuth Button */
+.vc-btn-microsoft {
+  background: #0078D4;
+  color: #ffffff;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.vc-btn-microsoft:hover {
+  background: #005ea6;
+  transform: translateY(-1px);
+}
+
+.vc-btn-microsoft:active {
+  transform: translateY(0);
+}
