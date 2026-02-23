@@ -197,6 +197,16 @@ async function startChat(target) {
 if (videoBtn) videoBtn.addEventListener("click", () => startChat("video.html"));
 if (textBtn) textBtn.addEventListener("click", () => startChat("text.html"));
 
+// Microsoft OAuth (signup) button
+const msBtn = document.getElementById("msBtn");
+
+if (msBtn) {
+  msBtn.addEventListener("click", () => {
+    const next = pendingTarget || "/";
+    window.location.href = `/auth/microsoft?next=${encodeURIComponent(next)}`;
+  });
+}
+
 if (onlineEl) onlineEl.textContent = "0";
 
 // Close behaviors
