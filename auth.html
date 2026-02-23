@@ -36,7 +36,6 @@
     }
     .brand{font-weight:900; letter-spacing:0.2px; font-size:18px}
     .pill{font-size:12px; color:var(--muted); border:1px solid var(--line); padding:6px 10px; border-radius:999px}
-
     .tabs{display:flex; gap:10px; margin: 10px 0 14px}
     button.tab{
       flex:1;
@@ -51,7 +50,6 @@
     button.tab.active{border-color: rgba(244,124,32,0.45); background: rgba(244,124,32,0.12)}
     .section{display:none}
     .section.active{display:block}
-
     label{display:block; font-size:12px; color:var(--muted); margin: 10px 0 6px}
     input, select{
       width:100%;
@@ -62,10 +60,8 @@
       color: var(--text);
       outline:none;
     }
-
     .row{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
     @media (max-width:520px){ .row{grid-template-columns: 1fr} }
-
     .btn{
       width:100%;
       margin-top:12px;
@@ -78,13 +74,6 @@
       cursor:pointer;
     }
     .btn:disabled{opacity:0.6; cursor:not-allowed}
-
-    .btn-ms{
-      border-color: rgba(45,212,191,0.45) !important;
-      background: rgba(45,212,191,0.20) !important;
-      margin-top:10px !important;
-    }
-
     .msg{
       margin-top:12px;
       padding:10px 12px;
@@ -134,7 +123,13 @@
       <label>UTK Email</label>
       <input id="suEmail" placeholder="name@utk.edu" />
 
-      <button class="btn btn-ms" id="msBtn" type="button">
+      <!-- Microsoft OAuth button -->
+      <button
+        class="btn"
+        id="msBtn"
+        type="button"
+        style="margin-top:10px;border-color:rgba(45,212,191,0.45);background:rgba(45,212,191,0.28);"
+      >
         Continue with UTK Microsoft
       </button>
 
@@ -142,6 +137,7 @@
         If email codes go to spam/quarantine, use Microsoft login instead.
       </div>
 
+      <!-- Email-code fallback -->
       <button class="btn" id="sendCodeBtn" type="button">Send Verification Code</button>
 
       <div class="row">
