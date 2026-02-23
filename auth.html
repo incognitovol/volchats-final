@@ -7,7 +7,7 @@
   <style>
     :root{
       --bg:#0b0f14; --panel:#111826; --line:#223047; --text:#e6edf6; --muted:#9fb0c3;
-      --accent:#f47c20; --danger:#ff4d4d;
+      --accent:#f47c20; --teal:#2dd4bf; --danger:#ff4d4d;
     }
     *{box-sizing:border-box}
     body{
@@ -21,11 +21,12 @@
       padding:24px;
     }
     .card{
-      width: min(520px, 100%);
+      width: min(560px, 100%);
       border:1px solid var(--line);
       background: rgba(17,24,38,0.88);
       border-radius: 18px;
       padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
     }
     .top{
       display:flex; align-items:center; justify-content:space-between;
@@ -46,8 +47,10 @@
       border-radius: 12px;
       cursor:pointer;
       font-weight:800;
+      transition: transform .06s ease, background .15s ease, border-color .15s ease;
     }
-    button.tab.active{border-color: rgba(244,124,32,0.45); background: rgba(244,124,32,0.12)}
+    button.tab:active{transform: scale(0.99)}
+    button.tab.active{border-color: rgba(244,124,32,0.55); background: rgba(244,124,32,0.12)}
     .section{display:none}
     .section.active{display:block}
     label{display:block; font-size:12px; color:var(--muted); margin: 10px 0 6px}
@@ -60,25 +63,32 @@
       color: var(--text);
       outline:none;
     }
+    input::placeholder{color: rgba(159,176,195,0.7)}
     .row{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
-    @media (max-width:520px){ .row{grid-template-columns: 1fr} }
+    @media (max-width:560px){ .row{grid-template-columns: 1fr} }
+
     .btn{
       width:100%;
       margin-top:12px;
       padding:12px;
       border-radius: 12px;
-      border:1px solid rgba(244,124,32,0.45);
+      border:1px solid rgba(244,124,32,0.55);
       background: rgba(244,124,32,0.16);
       color: var(--text);
       font-weight:900;
       cursor:pointer;
+      transition: transform .06s ease, background .15s ease, border-color .15s ease;
     }
-    .btn:disabled{opacity:0.6; cursor:not-allowed}
-    .btn.ms{
-      margin-top:10px;
+    .btn:hover{background: rgba(244,124,32,0.22)}
+    .btn:active{transform: scale(0.99)}
+    .btn:disabled{opacity:0.55; cursor:not-allowed}
+
+    .btn-teal{
       border-color: rgba(45,212,191,0.55);
-      background: rgba(45,212,191,0.25);
+      background: rgba(45,212,191,0.18);
     }
+    .btn-teal:hover{background: rgba(45,212,191,0.24)}
+
     .msg{
       margin-top:12px;
       padding:10px 12px;
@@ -93,6 +103,11 @@
     .msg.ok{border-color: rgba(45,212,191,0.35); color:#c9fff5}
     .small{font-size:12px;color:var(--muted); margin-top:10px}
     .link{color:#ffd7b8; text-decoration:none; font-weight:800}
+    .divider{
+      margin-top:12px;
+      border-top:1px solid rgba(34,48,71,0.55);
+      padding-top:12px;
+    }
   </style>
 </head>
 <body>
@@ -125,61 +140,53 @@
 
     <!-- SIGNUP -->
     <div class="section" id="secSignup">
-      <label>UTK Email</label>
-      <input id="suEmail" placeholder="name@utk.edu" />
+      <div class="small">
+        Step 1: Verify your UTK email with Microsoft.<br/>
+        Step 2: Choose your username + profile info.
+      </div>
 
-      <!-- Microsoft OAuth -->
-      <button class="btn ms" id="msBtn" type="button">
+      <button class="btn btn-teal" id="msBtn" type="button" style="margin-top:12px;">
         Continue with UTK Microsoft
       </button>
 
-      <div class="small" style="margin-top:8px">
-        If email codes go to spam/quarantine, use Microsoft login instead.
-      </div>
-
-      <!-- Email-code fallback -->
-      <button class="btn" id="sendCodeBtn" type="button">Send Verification Code</button>
-
-      <div class="row">
-        <div>
-          <label>Verification Code</label>
-          <input id="suCode" placeholder="6-digit code" />
-        </div>
-        <div>
-          <label>Username</label>
-          <input id="suUsername" placeholder="3-20 chars, letters/numbers/._" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Gender</label>
-          <select id="suGender">
-            <option value="">Select…</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </div>
-        <div>
-          <label>Class Year</label>
-          <select id="suYear">
-            <option value="">Select…</option>
-            <option value="freshman">Freshman</option>
-            <option value="sophomore">Sophomore</option>
-            <option value="junior">Junior</option>
-            <option value="senior">Senior</option>
-          </select>
-        </div>
-      </div>
-
-      <label>Password</label>
-      <input id="suPass" type="password" placeholder="At least 8 characters" />
-
-      <button class="btn" id="createBtn" type="button">Create Account</button>
-
-      <div class="small">Already have an account? <a class="link" href="#" id="goLogin">Login</a></div>
-
       <div id="signupMsg" class="msg" style="display:none;"></div>
+
+      <!-- These fields stay hidden until Microsoft verification succeeds -->
+      <div id="postOauthFields" class="divider" style="display:none;">
+        <label>Verified UTK Email</label>
+        <input id="suEmail" placeholder="name@utk.edu" disabled />
+
+        <div class="row">
+          <div>
+            <label>Username</label>
+            <input id="suUsername" placeholder="3-20 chars, letters/numbers/._" />
+          </div>
+          <div>
+            <label>Class Year</label>
+            <select id="suYear">
+              <option value="">Select…</option>
+              <option value="freshman">Freshman</option>
+              <option value="sophomore">Sophomore</option>
+              <option value="junior">Junior</option>
+              <option value="senior">Senior</option>
+            </select>
+          </div>
+        </div>
+
+        <label>Gender</label>
+        <select id="suGender">
+          <option value="">Select…</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+
+        <label>Password</label>
+        <input id="suPass" type="password" placeholder="At least 8 characters" />
+
+        <button class="btn" id="createBtn" type="button" disabled>Create Account</button>
+
+        <div class="small">Already have an account? <a class="link" href="#" id="goLogin">Login</a></div>
+      </div>
     </div>
   </div>
 
