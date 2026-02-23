@@ -13,9 +13,10 @@ const loginBtn = qs("loginBtn");
 const loginMsg = qs("loginMsg");
 
 const msBtn = qs("msBtn");
-const signupMsg = qs("signupMsg");
 
-const postOauthFields = qs("postOauthFields");
+const step1Box = qs("step1Box");
+const profileBox = qs("profileBox");
+
 const suEmail = qs("suEmail");
 const suUsername = qs("suUsername");
 const suGender = qs("suGender");
@@ -23,16 +24,21 @@ const suYear = qs("suYear");
 const suPass = qs("suPass");
 const createBtn = qs("createBtn");
 
+// We have TWO message boxes on signup now (one for step1, one for profile step)
+const signupMsg = qs("signupMsg");
+const signupMsg2 = qs("signupMsg2");
+
 const goSignup = qs("goSignup");
 const goLogin = qs("goLogin");
 
 function show(el, text, kind){
+  if(!el) return;
   el.style.display = "block";
   el.classList.remove("err","ok");
   if(kind) el.classList.add(kind);
   el.textContent = text;
 }
-function hide(el){ el.style.display = "none"; }
+function hide(el){ if(el) el.style.display = "none"; }
 
 function setTab(which){
   const login = which === "login";
@@ -42,6 +48,7 @@ function setTab(which){
   secSignup.classList.toggle("active", !login);
   hide(loginMsg);
   hide(signupMsg);
+  hide(signupMsg2);
 }
 
 tabLogin.onclick = () => setTab("login");
@@ -73,22 +80,21 @@ function redirectAfterLogin(){
 // ======== OAuth state ========
 let OAUTH_VERIFIED = false;
 
+// After OAuth is verified, show profile completion UI
 function applyOauthVerifiedUI(email){
   OAUTH_VERIFIED = true;
 
-  if (postOauthFields) postOauthFields.style.display = "block";
-  if (suEmail){
+  if(step1Box) step1Box.style.display = "none";
+  if(profileBox) profileBox.style.display = "block";
+
+  if(suEmail){
     suEmail.value = email || "";
   }
-  if (createBtn){
-    createBtn.disabled = false;
-  }
 
-  show(
-    signupMsg,
-    "Microsoft verified. Now choose your username + profile info and create your account.",
-    "ok"
-  );
+  hide(signupMsg);
+  hide(signupMsg2);
+
+  // require user to complete fields; keep create enabled but you can add validation later
 }
 
 // show ban message if redirected
@@ -101,31 +107,29 @@ function applyOauthVerifiedUI(email){
   }
 })();
 
-// handle OAuth return (?oauth=1)
+// Handle OAuth return
 (async function(){
   try{
     const p = new URLSearchParams(location.search);
     if(p.get("oauth") !== "1") return;
 
+    // switch to signup tab automatically
     setTab("signup");
-    hide(signupMsg);
+
+    hide(signupMsg2);
     show(signupMsg, "Finishing Microsoft verification…", null);
 
     const r = await fetch("/api/auth/oauth-status");
     const j = await r.json().catch(()=>null);
 
     if(!r.ok || !j || !j.ok){
-      show(
-        signupMsg,
-        j?.error || "Microsoft verification failed. Please try again.",
-        "err"
-      );
+      show(signupMsg, j?.error || "Microsoft verification failed. Try again.", "err");
       return;
     }
 
     applyOauthVerifiedUI(j.email);
   }catch(e){
-    show(signupMsg, "Microsoft verification failed. Please try again.", "err");
+    show(signupMsg, "Microsoft verification failed. Try again.", "err");
   }
 })();
 
@@ -134,6 +138,7 @@ if(msBtn){
   msBtn.onclick = (e) => {
     e.preventDefault();
     hide(signupMsg);
+    hide(signupMsg2);
     show(signupMsg, "Redirecting to Microsoft…", null);
     window.location.href = "/auth/microsoft";
   };
@@ -163,15 +168,14 @@ loginBtn.onclick = async () => {
   }
 };
 
-// Create account (OAuth-only)
+// Create account (OAuth only)
 createBtn.onclick = async () => {
-  hide(signupMsg);
+  hide(signupMsg2);
   createBtn.disabled = true;
 
   try{
     if(!OAUTH_VERIFIED){
-      show(signupMsg, "Please verify with Microsoft first.", "err");
-      createBtn.disabled = false;
+      show(signupMsg2, "Please verify with Microsoft first.", "err");
       return;
     }
 
@@ -182,10 +186,10 @@ createBtn.onclick = async () => {
       password: suPass.value
     });
 
-    show(signupMsg, "Account created. Redirecting…", "ok");
+    show(signupMsg2, "Account created. Redirecting…", "ok");
     setTimeout(redirectAfterLogin, 500);
   }catch(e){
-    show(signupMsg, e.message || "Signup failed", "err");
+    show(signupMsg2, e.message || "Signup failed", "err");
   }finally{
     createBtn.disabled = false;
   }
