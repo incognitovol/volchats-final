@@ -201,47 +201,35 @@
         </div>
       </div>
 
-      <!-- SIGNUP (3 steps) -->
+      <!-- SIGNUP (Microsoft-first) -->
       <div id="panelSignup" class="vc-panel">
-        <!-- Step 1 -->
+        <!-- Step 1: Microsoft verify -->
         <div id="step1" class="vc-step active">
           <div class="vc-step-header">
-            <div class="vc-step-title">Verify your UTK email</div>
-            <div class="vc-step-sub">Use your @utk.edu email to join.</div>
+            <div class="vc-step-title">Verify with UTK Microsoft</div>
+            <div class="vc-step-sub">Step 1: Sign in with your UTK Microsoft account to verify you’re a student.</div>
           </div>
 
-          <label class="vc-label">University of Tennessee Email</label>
-          <input id="suEmail" class="vc-input" placeholder="name@utk.edu" />
-
-          <button id="sendCodeBtn" class="vc-btn vc-btn-primary">Send Verification Code</button>
+          <button id="msBtn" class="vc-btn vc-btn-primary" style="border-color:rgba(45,212,191,0.45);background:rgba(45,212,191,0.30);">
+            Continue with UTK Microsoft
+          </button>
 
           <div id="signupMsg1" class="vc-msg" style="display:none;"></div>
+
+          <div class="vc-small" style="opacity:.9;margin-top:10px;">
+            You’ll come right back here after Microsoft verifies your @utk.edu email.
+          </div>
         </div>
 
-        <!-- Step 2 -->
+        <!-- Step 2: Profile -->
         <div id="step2" class="vc-step">
           <div class="vc-step-header">
-            <div class="vc-step-title">Enter the code</div>
-            <div class="vc-step-sub">We sent a 6-digit code to your UTK email.</div>
-          </div>
-
-          <label class="vc-label">Verification Code</label>
-          <input id="suCode" class="vc-input" placeholder="6-digit code" />
-
-          <div class="vc-row">
-            <button id="backToEmailBtn" class="vc-btn vc-btn-ghost">Back</button>
-            <button id="verifyCodeBtn" class="vc-btn vc-btn-primary">Verify</button>
-          </div>
-
-          <div id="signupMsg2" class="vc-msg" style="display:none;"></div>
-        </div>
-
-        <!-- Step 3 -->
-        <div id="step3" class="vc-step">
-          <div class="vc-step-header">
             <div class="vc-step-title">Finish your profile</div>
-            <div class="vc-step-sub">Quick setup then you’re in.</div>
+            <div class="vc-step-sub">Step 2: Pick a username + profile info, then you’re in.</div>
           </div>
+
+          <label class="vc-label">Verified UTK Email</label>
+          <input id="suEmail" class="vc-input" placeholder="Verified by Microsoft" disabled />
 
           <div class="vc-grid">
             <div>
@@ -277,7 +265,7 @@
 
           <button id="createBtn" class="vc-btn vc-btn-primary">Create Account</button>
 
-          <div id="signupMsg3" class="vc-msg" style="display:none;"></div>
+          <div id="signupMsg2" class="vc-msg" style="display:none;"></div>
 
           <div class="vc-small">
             Already have an account? <a href="#" id="goLogin" class="vc-link">Login</a>
