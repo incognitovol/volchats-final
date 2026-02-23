@@ -339,7 +339,8 @@ if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_TENANT_ID) {
   passport.use(
     new OIDCStrategy(
       {
-        identityMetadata: `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/v2.0/.well-known/openid-configuration`,
+        identityMetadata: `https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration`,
+        validateIssuer: false,
         clientID: MICROSOFT_CLIENT_ID,
         clientSecret: MICROSOFT_CLIENT_SECRET,
         responseType: "code",
