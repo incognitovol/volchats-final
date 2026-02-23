@@ -86,8 +86,8 @@ const MAX_TEXT_ROOMS = Math.max(1, Number(process.env.MAX_TEXT_ROOMS || 80));
    ✅ ADDED: Microsoft OAuth ENV
 ----------------------------*/
 const BASE_URL = 
-   String(process.env.BASE_URL || "").trim() ||
-   `http://localhost:${process.env.PORT || 300)`;
+   (process.env.BASE_URL || "").trim() ||
+   `http://localhost:${process.env.PORT || 3000}`;
 const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID || "";
 const MICROSOFT_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET || "";
 const MICROSOFT_TENANT_ID = process.env.MICROSOFT_TENANT_ID || "";
