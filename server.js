@@ -356,11 +356,11 @@ if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_TENANT_ID) {
   // Callback (Azure uses POST form_post)
   app.post(
     "/auth/microsoft/callback",
-    passport.authenticate("azuread-openidconnect", { failureRedirect: "/auth.html?oauth=fail" }),
+    passport.authenticate("azuread-openidconnect", { failureRedirect: "/?oauth=fail" }),
     (req, res) => {
       try {
         const email = normalizeEmail(req.user?.email || "");
-        if (!isValidUtkEmail(email)) return res.redirect("/auth.html?oauth=fail");
+        if (!isValidUtkEmail(email)) return res.redirect("/?oauth=fail");
 
         // If user already exists, log them in immediately
         const existing = db.prepare("SELECT id, email, username FROM users WHERE email=?").get(email);
@@ -374,9 +374,9 @@ if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_TENANT_ID) {
         setOauthPendingCookie(res, { email, oauthVerified: true });
 
         // Send them back to your auth page so UI can show "finish signup"
-        return res.redirect("/auth.html?oauth=1");
+        return res.redirect("/?oauth=1");
       } catch {
-        return res.redirect("/auth.html?oauth=fail");
+        return res.redirect("/?oauth=fail");
       }
     }
   );
@@ -644,7 +644,7 @@ app.get(["/video.html", "/text.html"], (req, res, next) => {
 
   const sess = getSession(req);
   if (!sess?.userId) {
-    return res.redirect("/auth.html");
+    return res.redirect("/?auth=1");
   }
 
   const ip = getIp(req);
@@ -652,7 +652,7 @@ app.get(["/video.html", "/text.html"], (req, res, next) => {
   if (ban) {
     clearSessionCookie(res);
     return res.redirect(
-      `/auth.html?banned=1&until=${encodeURIComponent(ban.expires_at)}&reason=${encodeURIComponent(ban.reason)}`
+      `/?auth=1&banned=1&until=${encodeURIComponent(ban.expires_at)}&reason=${encodeURIComponent(ban.reason)}`
     );
   }
 
