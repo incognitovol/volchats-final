@@ -74,6 +74,11 @@
       cursor:pointer;
     }
     .btn:disabled{opacity:0.6; cursor:not-allowed}
+    .btn.ms{
+      margin-top:10px;
+      border-color: rgba(45,212,191,0.55);
+      background: rgba(45,212,191,0.25);
+    }
     .msg{
       margin-top:12px;
       padding:10px 12px;
@@ -123,13 +128,8 @@
       <label>UTK Email</label>
       <input id="suEmail" placeholder="name@utk.edu" />
 
-      <!-- Microsoft OAuth button -->
-      <button
-        class="btn"
-        id="msBtn"
-        type="button"
-        style="margin-top:10px;border-color:rgba(45,212,191,0.45);background:rgba(45,212,191,0.28);"
-      >
+      <!-- Microsoft OAuth -->
+      <button class="btn ms" id="msBtn" type="button">
         Continue with UTK Microsoft
       </button>
 
