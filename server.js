@@ -282,7 +282,7 @@ async function sendVerificationEmail(email, code) {
   const fromEmail =
     (SMTP_FROM.match(/<([^>]+)>/) || [])[1] ||
     (String(SMTP_FROM || "").includes("@") ? String(SMTP_FROM).trim() : "") ||
-    "no-reply@volchats.com";
+    "no-reply@mail.volchats.com";
    
   // ========== 0) Prefer Resend HTTP API ==========
   if (RESEND_API_KEY) {
@@ -290,7 +290,7 @@ async function sendVerificationEmail(email, code) {
       const fromEmail =
         (String(RESEND_FROM).match(/<([^>]+)>/) || [])[1] ||
         String(RESEND_FROM) ||
-        "no-reply@volchats.com";
+        "no-reply@mail.volchats.com";
 
       console.log("[VolChats] Trying Resend API...");
 
