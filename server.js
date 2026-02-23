@@ -400,21 +400,41 @@ app.get("/auth/microsoft", (req, res, next) => {
           return res.redirect(returnTo || "/");
         }
 
-        // Otherwise, mark them as verified pending signup details
-        setOauthPendingCookie(res, { email, oauthVerified: true });
+        // Otherwise, create them automatically and log them in
+const createdAt = nowIso();
 
-        // Send them back to your auth page so UI can show "finish signup"
-        const returnTo = readOauthReturnCookie(req);
-        clearOauthReturnCookie(res);
-        return res.redirect(`/?oauth=1&next=${encodeURIComponent(returnTo || "/")}`);
+// Generate username from email
+const base = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20) || "vol";
+let username = base;
+let n = 0;
+
+while (db.prepare("SELECT 1 FROM users WHERE username=?").get(username)) {
+  n += 1;
+  username = `${base}${n}`.slice(0, 24);
+}
+
+// Generate random password (OAuth users won't use it)
+const randomPass = crypto.randomBytes(32).toString("hex");
+const passwordHash = bcrypt.hashSync(randomPass, 10);
+
+// Insert into DB
+const info = db.prepare(
+  "INSERT INTO users (email, username, gender, class_year, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+).run(email, username, "N/A", "N/A", passwordHash, createdAt);
+
+const userId = info.lastInsertRowid;
+
+// Log them in exactly like normal login
+setSessionCookie(res, { userId, email, username });
+
+const returnTo = readOauthReturnCookie(req);
+clearOauthReturnCookie(res);
+
+return res.redirect(returnTo || "/");
+         
       } catch {
         return res.redirect("/?oauth=fail");
       }
-    }
-  );
-} else {
-  console.log("[VolChats] Microsoft OAuth not enabled (missing MICROSOFT_* env vars).");
-}
 
 /* ---------------------------
    ✅ ADDED: API helpers for frontend
