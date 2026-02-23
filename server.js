@@ -257,22 +257,38 @@ try {
 }
 
 async function sendVerificationEmail(email, code) {
+  // trace id so every send attempt is trackable in Railway logs + Brevo logs
+  const traceId =
+    "vc_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+
+  console.log(`[VolChats] sendVerificationEmail called traceId=${traceId} email=${email}`);
+
   // Always have a fallback log (so you can still test even if Brevo/API fails)
   const fallbackLog = () => {
-    console.log("\n[VolChats] EMAIL VERIFICATION CODE (DEV MODE):");
+    console.log(`\n[VolChats] EMAIL VERIFICATION CODE (DEV MODE) traceId=${traceId}:`);
     console.log("Email:", email);
     console.log("Code :", code);
     console.log("------------------------------------------------\n");
   };
 
-  // 1) Prefer Brevo HTTP API in production (works on Railway, no SMTP ports)
-console.log("[VolChats] BREVO_API_KEY present?", !!process.env.BREVO_API_KEY);
+  // log env presence
+  console.log(`[VolChats] BREVO_API_KEY present?`, Boolean(process.env.BREVO_API_KEY));
+  console.log(`[VolChats] transporter present?`, Boolean(transporter));
+
+  // Extract a real email from SMTP_FROM if it’s in "Name <email@domain>" form
+  const fromEmail =
+    (SMTP_FROM.match(/<([^>]+)>/) || [])[1] ||
+    (String(SMTP_FROM || "").includes("@") ? String(SMTP_FROM).trim() : "") ||
+    "no-reply@volchats.com";
+
+  // ========== 1) Prefer Brevo HTTP API ==========
   if (process.env.BREVO_API_KEY) {
+    console.log(`[VolChats] Trying Brevo HTTP API... traceId=${traceId} fromEmail=${fromEmail}`);
+
     try {
-      // IMPORTANT: "sender.email" must match a verified sender/domain in Brevo
-      // Use your authenticated domain sender like no-reply@volchats.com
-      const fromEmail =
-        (SMTP_FROM.match(/<([^>]+)>/) || [])[1] || "no-reply@volchats.com";
+      // Abort if Brevo hangs (prevents “button grayed out forever”)
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
 
       const r = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
@@ -284,42 +300,58 @@ console.log("[VolChats] BREVO_API_KEY present?", !!process.env.BREVO_API_KEY);
         body: JSON.stringify({
           sender: { name: "VolChats", email: fromEmail },
           to: [{ email }],
-          subject: "Your VolChats verification code",
-          textContent: `Your VolChats verification code is: ${code}\n\nThis code expires in 10 minutes.`,
+          subject: "Your VolChats sign-in code",
+          textContent: `Your VolChats sign-in code is: ${code}\n\nThis code expires in 10 minutes.\n\ntraceId: ${traceId}`,
+          // Optional: adds a custom header you can filter by if needed
+          headers: { "X-VolChats-Trace": traceId },
         }),
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
 
-      if (!r.ok) {
-        const txt = await r.text();
-        console.log("[VolChats] Brevo API failed:", r.status, txt);
+      console.log(`[VolChats] Brevo HTTP status=${r.status} traceId=${traceId}`);
+
+      const txt = await r.text();
+      // log body (Brevo returns useful info here)
+      console.log(`[VolChats] Brevo HTTP response traceId=${traceId}:`, txt);
+
+      if (r.status < 200 || r.status >= 300) {
+        console.log(`[VolChats] Brevo API failed -> fallback. traceId=${traceId}`);
         fallbackLog();
         return false;
       }
 
+      console.log(`[VolChats] Brevo API SUCCESS. traceId=${traceId}`);
       return true;
     } catch (err) {
-      console.log("[VolChats] Brevo API error:", err?.message || err);
+      console.log(`[VolChats] Brevo API error traceId=${traceId}:`, err?.message || err);
+      console.log(`[VolChats] Brevo API errored -> fallback. traceId=${traceId}`);
       fallbackLog();
       return false;
     }
   }
 
-  // 2) If no API key, try SMTP transporter (may still fail on Railway)
+  // ========== 2) SMTP fallback ==========
   if (!transporter) {
+    console.log(`[VolChats] No transporter -> DEV MODE. traceId=${traceId}`);
     fallbackLog();
     return true;
   }
 
+  console.log(`[VolChats] Trying SMTP send... traceId=${traceId} host=${SMTP_HOST} port=${SMTP_PORT}`);
+
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: SMTP_FROM,
       to: email,
-      subject: "Your VolChats verification code",
-      text: `Your VolChats verification code is: ${code}\n\nThis code expires in 10 minutes.`,
+      subject: "Your VolChats sign-in code",
+      text: `Your VolChats sign-in code is: ${code}\n\nThis code expires in 10 minutes.\n\ntraceId: ${traceId}`,
+      headers: { "X-VolChats-Trace": traceId },
     });
+
+    console.log(`[VolChats] SMTP SUCCESS traceId=${traceId} messageId=${info?.messageId || "n/a"}`);
     return true;
   } catch (err) {
-    console.log("\n[VolChats] SMTP SEND FAILED");
+    console.log(`\n[VolChats] SMTP SEND FAILED traceId=${traceId}`);
     console.log("Error:", err?.message || err);
     fallbackLog();
     return false;
