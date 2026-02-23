@@ -92,6 +92,7 @@ const MICROSOFT_TENANT_ID = process.env.MICROSOFT_TENANT_ID || "";
 
 // Pending OAuth cookie (short-lived)
 const OAUTH_PENDING_COOKIE = "volchats_oauth_pending";
+const OAUTH_RETURN_COOKIE = "volchats_oauth_return";
 
 /* ---------------------------
    Maintenance gate (admin still works)
@@ -123,9 +124,6 @@ app.use((req, res, next) => {
 app.get("/admin.html", adminGuard, (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
-
-// static after maintenance gate
-app.use(express.static(path.join(__dirname, ".")));
 
 /* ---------------------------
    DB (SQLite)
@@ -287,6 +285,28 @@ function getOauthPending(req) {
   }
 }
 
+function setOauthReturnCookie(res, returnTo) {
+  const safe = String(returnTo || "/").trim();
+  res.cookie(OAUTH_RETURN_COOKIE, safe, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: IS_PROD,
+    maxAge: 15 * 60 * 1000,
+  });
+}
+
+function readOauthReturnCookie(req) {
+  return String(req.cookies?.[OAUTH_RETURN_COOKIE] || "/");
+}
+
+function clearOauthReturnCookie(res) {
+  res.clearCookie(OAUTH_RETURN_COOKIE, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: IS_PROD,
+  });
+}
+
 /* ---------------------------
    Admin guard
 ----------------------------*/
@@ -348,10 +368,11 @@ if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_TENANT_ID) {
   );
 
   // Start OAuth
-  app.get("/auth/microsoft", (req, res, next) => {
-    // During maintenance, you can still allow auth pages
-    return passport.authenticate("azuread-openidconnect")(req, res, next);
-  });
+app.get("/auth/microsoft", (req, res, next) => {
+  const nextUrl = String(req.query.next || "/").trim();
+  setOauthReturnCookie(res, nextUrl);
+  return passport.authenticate("azuread-openidconnect")(req, res, next);
+});
 
   // Callback (Azure uses POST form_post)
   app.post(
@@ -367,14 +388,20 @@ if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_TENANT_ID) {
         if (existing) {
           setSessionCookie(res, { userId: existing.id, email: existing.email, username: existing.username });
           clearOauthPendingCookie(res);
-          return res.redirect("/video.html"); // or /text.html, or /auth.html?logged=1
+
+          const returnTo = readOauthReturnCookie(req);
+          clearOauthReturnCookie(res);
+
+          return res.redirect(returnTo || "/");
         }
 
         // Otherwise, mark them as verified pending signup details
         setOauthPendingCookie(res, { email, oauthVerified: true });
 
         // Send them back to your auth page so UI can show "finish signup"
-        return res.redirect("/?oauth=1");
+        const returnTo = readOauthReturnCookie(req);
+        clearOauthReturnCookie(res);
+        return res.redirect(`/?oauth=1&next=${encodeURIComponent(returnTo || "/")}`);
       } catch {
         return res.redirect("/?oauth=fail");
       }
@@ -1371,6 +1398,9 @@ wss.on("connection", (ws, req) => {
     drainQueue("text");
   });
 });
+
+// static after maintenance gate
+app.use(express.static(path.join(__dirname, ".")));
 
 server.listen(PORT, () => {
   console.log("VolChats running on http://localhost:" + PORT);
