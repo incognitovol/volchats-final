@@ -1194,10 +1194,9 @@ function tryMatch(ws) {
     }
   }
 
-  // No match found yet -> wait in queue
-  if (!queue.includes(ws)) queue.push(ws);
-  sendQueueUpdate(ws);
-  broadcastQueueUpdates(mode);
+  // No match found yet -> NOT queued unless we're at capacity.
+  // Just wait silently for a partner.
+  return;
 }
 
 function pushMsgHistory(ws, fromId, text) {
