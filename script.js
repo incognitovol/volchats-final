@@ -171,7 +171,12 @@ if (pmLogout) {
 /* ---------------------------
    Start chat (requires auth)
 ----------------------------*/
+let STARTCHAT_LOCK = false;
+
 async function startChat(target) {
+  if (STARTCHAT_LOCK) return;
+  STARTCHAT_LOCK = true;
+  
   pendingTarget = target;
 
   const loggedIn = await checkLoggedIn();
@@ -192,6 +197,12 @@ async function startChat(target) {
   setTab("login");
   setStep(1);
   showModal();
+}
+
+  // allow clicking again after model opens
+ setTimeout(() => {
+   STARTCHAT_LOCK = false;
+ }, 500);
 }
 
 if (videoBtn) videoBtn.addEventListener("click", () => startChat("video.html"));
