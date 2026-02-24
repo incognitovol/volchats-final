@@ -241,6 +241,14 @@ function setSessionCookie(res, payload, rememberMe = false) {
   res.cookie(COOKIE_NAME, token, cookieOptions);
 }
 
+function clearSessionCookie(res) {
+   res.clearCookie(COOKIE_NAME, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: IS_PROD
+    });
+}
+
 function getSession(req) {
   const token = req.cookies[COOKIE_NAME];
   if (!token) return null;
