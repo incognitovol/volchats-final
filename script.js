@@ -203,8 +203,7 @@ async function startChat(target) {
  setTimeout(() => {
    STARTCHAT_LOCK = false;
  }, 500);
-}
-
+ }
 if (videoBtn) videoBtn.addEventListener("click", () => startChat("video.html"));
 if (textBtn) textBtn.addEventListener("click", () => startChat("text.html"));
 
