@@ -38,10 +38,12 @@ app.use(
     secret: process.env.SESSION_SECRET || "dev_session_secret_change_me",
     resave: false,
     saveUninitialized: false,
+    proxy: true, // IMPORTANT on Railway / behind proxy
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: IS_PROD,                 // must be true in prod for SameSite=None
+      sameSite: IS_PROD ? "none" : "lax", // allow cross-site POST from Microsoft in prod
+      maxAge: 15 * 60 * 1000,          // 15 minutes is fine for oauth handshake
     },
   })
 );
