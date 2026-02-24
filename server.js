@@ -377,41 +377,69 @@ app.get("/auth/microsoft", (req, res, next) => {
   return passport.authenticate("azuread-openidconnect")(req, res, next);
 });
 
-  // Callback (Azure uses POST form_post)
-  app.post(
-    "/auth/microsoft/callback",
-    passport.authenticate("azuread-openidconnect", { failureRedirect: "/?oauth=fail" }),
-    (req, res) => {
-      console.log("✅ HIT MICROSOFT CALLBACK");
-       
-      try {
-        const email = normalizeEmail(req.user?.email || "");
-        if (!isValidUtkEmail(email)) return res.redirect("/?oauth=fail");
+// Callback (Azure uses POST form_post) — DEBUG VERSION
+app.post("/auth/microsoft/callback", (req, res, next) => {
+  console.log("✅ /auth/microsoft/callback HIT");
+  console.log("Callback query:", req.query);
+  console.log("Callback body keys:", Object.keys(req.body || {}));
+  next();
+});
 
-        // If user already exists, log them in immediately
-        const existing = db.prepare("SELECT id, email, username FROM users WHERE email=?").get(email);
-        if (existing) {
-          setSessionCookie(res, { userId: existing.id, email: existing.email, username: existing.username });
-          clearOauthPendingCookie(res);
-
-          const returnTo = readOauthReturnCookie(req);
-          clearOauthReturnCookie(res);
-
-          return res.redirect(returnTo || "/");
-        }
-
-        // Otherwise, mark them as verified pending signup details
-        setOauthPendingCookie(res, { email, oauthVerified: true });
-
-        // Send them back to your auth page so UI can show "finish signup"
-        const returnTo = readOauthReturnCookie(req);
-        clearOauthReturnCookie(res);
-        return res.redirect(`/?oauth=1&next=${encodeURIComponent(returnTo || "/")}`);
-      } catch {
+app.post(
+  "/auth/microsoft/callback",
+  (req, res, next) => {
+    passport.authenticate("azuread-openidconnect", (err, user, info) => {
+      if (err) {
+        console.log("❌ Passport err:", err);
         return res.redirect("/?oauth=fail");
       }
+      if (!user) {
+        console.log("❌ No user returned. info:", info);
+        return res.redirect("/?oauth=fail");
+      }
+      req.user = user;
+      console.log("✅ Passport user:", user);
+      return next();
+    })(req, res, next);
+  },
+  (req, res) => {
+    try {
+      console.log("✅ HIT MICROSOFT CALLBACK HANDLER");
+
+      const email = normalizeEmail(req.user?.email || "");
+      console.log("Email from MS:", email);
+
+      if (!isValidUtkEmail(email)) {
+        console.log("❌ Invalid UTK email:", email);
+        return res.redirect("/?oauth=fail");
+      }
+
+      const existing = db.prepare("SELECT id, email, username FROM users WHERE email=?").get(email);
+      if (existing) {
+        setSessionCookie(res, { userId: existing.id, email: existing.email, username: existing.username });
+        clearOauthPendingCookie(res);
+
+        const returnTo = readOauthReturnCookie(req);
+        clearOauthReturnCookie(res);
+
+        console.log("✅ Existing user logged in. Redirecting to:", returnTo || "/");
+        return res.redirect(returnTo || "/");
+      }
+
+      setOauthPendingCookie(res, { email, oauthVerified: true });
+
+      const returnTo = readOauthReturnCookie(req);
+      clearOauthReturnCookie(res);
+
+      console.log("✅ New OAuth verified. Redirecting to finish signup:", returnTo || "/");
+      return res.redirect(`/?oauth=1&next=${encodeURIComponent(returnTo || "/")}`);
+    } catch (e) {
+      console.log("❌ Callback handler error:", e);
+      return res.redirect("/?oauth=fail");
     }
-  );
+  }
+);
+
 } else {
   console.log("[VolChats] Microsoft OAuth not enabled (missing MICROSOFT_* env vars).");
 }
