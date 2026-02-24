@@ -222,22 +222,23 @@ function pairKey(a, b) {
   return x < y ? `${x}::${y}` : `${y}::${x}`;
 }
 
-function setSessionCookie(res, payload) {
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: IS_PROD,
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  });
-}
+function setSessionCookie(res, payload, rememberMe = false) {
 
-function clearSessionCookie(res) {
-  res.clearCookie(COOKIE_NAME, {
+  const expiresIn = rememberMe ? "30d" : "1d";
+
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn });
+
+  const cookieOptions = {
     httpOnly: true,
     sameSite: "lax",
-    secure: IS_PROD,
-  });
+    secure: IS_PROD
+  };
+
+  if (rememberMe) {
+    cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+  }
+
+  res.cookie(COOKIE_NAME, token, cookieOptions);
 }
 
 function getSession(req) {
@@ -836,6 +837,7 @@ app.post("/api/auth/register", (req, res) => {
 app.post("/api/auth/login", (req, res) => {
   const login = String(req.body.login || "").trim();
   const password = String(req.body.password || "");
+  const rememberMe = !!req.body.rememberMe;
 
   if (!login || !password) return res.status(400).json({ error: "Missing login/password" });
 
@@ -859,7 +861,7 @@ app.post("/api/auth/login", (req, res) => {
 
   db.prepare("UPDATE users SET last_login_at=? WHERE id=?").run(nowIso(), user.id);
 
-  setSessionCookie(res, { userId: user.id, email: user.email, username: user.username });
+  setSessionCookie(res, { userId: user.id, email: user.email, username: user.username }, rememberMe);
   res.json({ ok: true, user: { userId: user.id, email: user.email, username: user.username } });
 });
 
