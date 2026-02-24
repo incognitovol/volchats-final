@@ -252,10 +252,13 @@ if (loginBtn) {
     hideMsg(loginMsg);
     loginBtn.disabled = true;
 
+    const rememberMe = document.getElementById("rememberMe")?.checked || false;
+
     try {
       await api("/api/auth/login", "POST", {
         login: (loginField?.value || "").trim(),
         password: (loginPass?.value || ""),
+        rememberMe: rememberMe
       });
 
       showMsg(loginMsg, "Logged in. Sending you in…", "ok");
