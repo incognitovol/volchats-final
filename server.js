@@ -382,7 +382,7 @@ app.get("/auth/microsoft", (req, res, next) => {
     "/auth/microsoft/callback",
     passport.authenticate("azuread-openidconnect", { failureRedirect: "/?oauth=fail" }),
     (req, res) => {
-      console.log("✅ HIT MIROSOFT CALLBACK");
+      console.log("✅ HIT MICROSOFT CALLBACK");
        
       try {
         const email = normalizeEmail(req.user?.email || "");
