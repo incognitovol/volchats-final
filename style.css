@@ -656,3 +656,23 @@ body.text-page .chat-log {
 .vc-btn-microsoft:active {
   transform: translateY(0);
 }
+
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 14px;
+  font-size: 14px;
+}
+
+.remember-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #ff6a00; /* VolChats orange */
+}
+
+.remember-row label {
+  cursor: pointer;
+  user-select: none;
+}
