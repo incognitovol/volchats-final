@@ -870,16 +870,31 @@ app.post("/api/auth/logout", (req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/me", authRequired, (req, res) => {
-  const u = db.prepare("SELECT id, email, username, gender, class_year, created_at, last_login_at FROM users WHERE id=?")
-    .get(req.userSession.userId);
+app.get("/api/me", async (req, res) => {
+  try {
+    const token = req.cookies[COOKIE_NAME];
+    if (!token) {
+      return res.json({ ok: true, user: null });
+    }
 
-  if (!u) {
+    const payload = jwt.verify(token, JWT_SECRET);
+
+    const u = db.prepare(`
+      SELECT id, email, username, gender, class_year, created_at, last_login_at
+      FROM users WHERE id=?
+    `).get(payload.userId);
+
+    if (!u) {
+      clearSessionCookie(res);
+      return res.json({ ok: true, user: null });
+    }
+
+    return res.json({ ok: true, user: u });
+
+  } catch (e) {
     clearSessionCookie(res);
-    return res.status(401).json({ error: "Not logged in" });
+    return res.json({ ok: true, user: null });
   }
-
-  res.json({ ok: true, user: u });
 });
 
 /* ---------------------------
