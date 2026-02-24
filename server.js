@@ -18,6 +18,8 @@ const session = require("express-session");
 const passport = require("passport");
 const { OIDCStrategy } = require("passport-azure-ad");
 
+const IS_PROD = process.env.NODE_ENV === "production";
+
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
@@ -72,8 +74,6 @@ const SMTP_FROM = process.env.SMTP_FROM || "VolChats <no-reply@volchats.local>";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM = process.env.RESEND_FROM || SMTP_FROM;
-
-const IS_PROD = process.env.NODE_ENV === "production";
 
 // Maintenance + Capacity caps (queue)
 const MAINTENANCE_MODE =
