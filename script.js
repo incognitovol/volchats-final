@@ -30,6 +30,8 @@ const loginPass = document.getElementById("loginPass");
 const loginBtn = document.getElementById("loginBtn");
 const loginMsg = document.getElementById("loginMsg");
 
+let LOGIN_LOCK = false;
+
 // Signup elements (Microsoft-first, 2 steps)
 const step1 = document.getElementById("step1"); // Microsoft verify
 const step2 = document.getElementById("step2"); // Profile info
@@ -249,8 +251,13 @@ if (goLogin) goLogin.addEventListener("click", (e) => {
 ----------------------------*/
 if (loginBtn) {
   loginBtn.addEventListener("click", async () => {
+
+    if (LOGIN_LOCK) return;
+    LOGIN_LOCK = true;
+
     hideMsg(loginMsg);
     loginBtn.disabled = true;
+  
 
     const rememberMe = document.getElementById("rememberMe")?.checked || false;
 
@@ -275,6 +282,7 @@ if (loginBtn) {
       }
     } finally {
       loginBtn.disabled = false;
+      LOGIN_LOCK = false;  // release lock
     }
   });
 }
