@@ -4,7 +4,9 @@
   "description": "VolChats prototype",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate": "node scripts/migrate.js",
+    "postinstall": "node scripts/migrate.js"
   },
   "engines": {
     "node": ">=20 <23"
