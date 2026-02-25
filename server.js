@@ -129,51 +129,80 @@ app.get("/admin.html", adminGuard, (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
-/* ---------------------------
-   DB (SQLite)
-----------------------------*/
-const dbPath = process.env.DB_PATH || path.join(__dirname, "volchats.db");
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
+/* -------------------------
+   DB (Postgres)
+------------------------- */
+const { Pool } = require("pg");
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT NOT NULL UNIQUE,
-  username TEXT NOT NULL UNIQUE,
-  gender TEXT NOT NULL,
-  class_year TEXT NOT NULL,
-  password_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  last_login_at TEXT
-);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production"
+    ? { rejectUnauthorized: false }
+    : false,
+});
 
-CREATE TABLE IF NOT EXISTS email_codes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT NOT NULL,
-  code_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  used INTEGER NOT NULL DEFAULT 0
-);
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      username TEXT NOT NULL UNIQUE,
+      gender TEXT NOT NULL,
+      class_year TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_login_at TIMESTAMPTZ
+    );
+  `);
 
-CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes(email);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_codes (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0
+    );
+  `);
 
-CREATE TABLE IF NOT EXISTS bans (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER,
-  email TEXT,
-  ip TEXT,
-  reason TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  active INTEGER NOT NULL DEFAULT 1
-);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_email_codes_email
+    ON email_codes(email);
+  `);
 
-CREATE INDEX IF NOT EXISTS idx_bans_user_id ON bans(user_id);
-CREATE INDEX IF NOT EXISTS idx_bans_email ON bans(email);
-CREATE INDEX IF NOT EXISTS idx_bans_ip ON bans(ip);
-`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bans (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      email TEXT,
+      ip TEXT,
+      reason TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_bans_user_id
+    ON bans(user_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_bans_email
+    ON bans(email);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_bans_ip
+    ON bans(ip);
+  `);
+
+  console.log("Postgres DB ready");
+}
+
+initDb().catch(err => console.error("DB init error:", err));
 
 /* ---------------------------
    Helpers
