@@ -257,8 +257,17 @@ if (loginBtn) {
 
     hideMsg(loginMsg);
     loginBtn.disabled = true;
-  
 
+    const loginVal = (loginField?.value || "").trim();
+    const passVal = (loginPass?.value || "");
+
+    if (!loginVal || !passVal) {
+      showMsg(loginMsg, "Email/username and password required", "err");
+      loginBtn.disabled = false;
+      LOGIN_LOCK = false;
+      return;
+    }
+  
     const rememberMe = document.getElementById("rememberMe")?.checked || false;
 
     try {
