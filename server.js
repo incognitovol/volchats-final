@@ -905,6 +905,35 @@ app.get("/api/me", async (req, res) => {
   }
 });
 
+// Alias route so the frontend calling /api/auth/me doesn't crash
+app.get("/api/auth/me", async (req, res) => {
+  try {
+    const token = req.cookies[COOKIE_NAME];
+
+    if (!token) {
+      return res.json({ ok: true, user: null });
+    }
+
+    const payload = jwt.verify(token, JWT_SECRET);
+
+    const u = db.prepare(`
+      SELECT id, email, username, gender, class_year, created_at, last_login_at
+      FROM users
+      WHERE id=?
+    `).get(payload.userId);
+
+    if (!u) {
+      clearSessionCookie(res);
+      return res.json({ ok: true, user: null });
+    }
+
+    return res.json({ ok: true, user: u });
+  } catch (e) {
+    clearSessionCookie(res);
+    return res.json({ ok: true, user: null });
+  }
+});
+
 /* ---------------------------
    Admin: list users
 ----------------------------*/
